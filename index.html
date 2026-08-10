@@ -1,4 +1,9 @@
-<!DOCTYPE html> <html lang="es"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Violin Teacher - Bio-Web Full Tracking v26</title>
+<!DOCTYPE html> 
+<html lang="es"> 
+<head> 
+<meta charset="UTF-8"> 
+<meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+<title>Violin Teacher - Bio-Web Full Tracking v26</title>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -28,40 +33,57 @@
     #calibration-overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
     #btn-start { background: var(--cyan); color: black; border: none; padding: 20px 50px; border-radius: 40px; font-weight: 900; cursor: pointer; font-size: 14px; text-transform: uppercase; margin-top: 30px; pointer-events: auto; }
 </style>
-</head> <body>
-<div id="calibration-overlay"> <h2 style="color: var(--cyan); letter-spacing: 2px;">CALIBRACIÓN POSTURAL</h2> <p style="max-width: 450px; color: #aaa; font-size: 14px;">Pega los codos al cuerpo y mantente erguido para calibrar.</p> <button id="btn-start" onclick="initSystem()">ACTIVAR CÁMARA</button> </div>
-<div id="container"> <video id="input_video" playsinline></video> <canvas id="output_canvas"></canvas>
-<!-- IZQUIERDA: CUERPO Y VIOLÍN -->
-<div id="data-left" class="panel">
-    <div style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">MÉTRICAS IA</div>
-    <span class="label">Inclinación Cabeza</span>
-    <span id="txt-h" class="val">0°</span>
-    <div class="meter-bg"><div class="tilt-center-line"></div><div id="head-indicator"></div></div>
-    
-    <span class="label">Tensión Lado Violín</span>
-    <div class="bar-bg"><div id="bar-violin" class="bar-fill"></div></div>
-    
-    <span class="label">Altura Violín</span>
-    <span id="txt-v" class="val">Ok</span>
+</head> 
+<body>
+<div id="calibration-overlay"> 
+    <h2 style="color: var(--cyan); letter-spacing: 2px;">CALIBRACIÓN POSTURAL</h2> 
+    <p style="max-width: 450px; color: #aaa; font-size: 14px;">Pega los codos al cuerpo y mantente erguido para calibrar.</p> 
+    <button id="btn-start" onclick="initSystem()">ACTIVAR CÁMARA</button> 
 </div>
 
-<!-- DERECHA: BRAZO DERECHO (ARCO) -->
-<div id="data-right" class="panel">
-    <div style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">TÉCNICA DE ARCO</div>
-    <span class="label">Ángulo Codo</span>
-    <span id="txt-elbow" class="val">0°</span>
-    <div class="meter-bg"><div id="fill-elbow" class="meter-fill"></div></div>
+<div id="container"> 
+    <video id="input_video" playsinline></video> 
+    <canvas id="output_canvas"></canvas>
 
-    <span class="label">Cuerda Estimada</span>
-    <span id="txt-string" class="val" style="color:var(--cyan)">--</span>
+    <!-- IZQUIERDA: CUERPO Y VIOLÍN -->
+    <div id="data-left" class="panel">
+        <div style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">MÉTRICAS IA</div>
+        <span class="label">Inclinación Cabeza</span>
+        <span id="txt-h" class="val">0°</span>
+        <div class="meter-bg"><div class="tilt-center-line"></div><div id="head-indicator"></div></div>
+        
+        <span class="label">Tensión Lado Violín</span>
+        <div class="bar-bg"><div id="bar-violin" class="bar-fill"></div></div>
+        
+        <span class="label">Altura Violín</span>
+        <span id="txt-v" class="val">Ok</span>
+    </div>
 
-    <span class="label">Tensión Lado Arco</span>
-    <div class="bar-bg"><div id="bar-arco" class="bar-fill"></div></div>
+    <!-- DERECHA: BRAZO DERECHO (ARCO) -->
+    <div id="data-right" class="panel">
+        <div style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">TÉCNICA DE ARCO</div>
+        <span class="label">Ángulo Codo</span>
+        <span id="txt-elbow" class="val">0°</span>
+        <div class="meter-bg"><div id="fill-elbow" class="meter-fill"></div></div>
+
+        <span class="label">Cuerda Estimada</span>
+        <span id="txt-string" class="val" style="color:var(--cyan)">--</span>
+
+        <span class="label">Tensión Lado Arco</span>
+        <div class="bar-bg"><div id="bar-arco" class="bar-fill"></div></div>
+    </div>
+
+    <div id="instruction-box" class="panel">
+        <div id="main-advice" style="font-size: 20px; color: var(--cyan); font-weight: bold;">...</div>
+    </div>
 </div>
 
-<div id="instruction-box" class="panel"><div id="main-advice" style="font-size: 20px; color: var(--cyan); font-weight: bold;">...</div></div>
-</div>
-<script> const video = document.getElementById('input_video'); const canvas = document.getElementById('output_canvas'); const ctx = canvas.getContext('2d'); let baseGap = 0.45, isCalibrating = false, isCalibrated = false, lastSpeak = 0, lastMsg = "", samples = [];
+<script>
+const video = document.getElementById('input_video'); 
+const canvas = document.getElementById('output_canvas'); 
+const ctx = canvas.getContext('2d'); 
+let baseGap = 0.45, isCalibrating = false, isCalibrated = false, lastSpeak = 0, lastMsg = "", samples = [];
+
 function speak(t) {
     if (Date.now() - lastSpeak < 4500) return;
     if (t === lastMsg && t === "Cuerpo alineado ✓") return;
@@ -72,8 +94,15 @@ function speak(t) {
 
 async function initSystem() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
-        video.srcObject = stream; await video.play();
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+                facingMode: "user",
+                width: { ideal: 1280 }, 
+                height: { ideal: 720 } 
+            } 
+        });
+        video.srcObject = stream; 
+        await video.play();
         document.getElementById('btn-start').style.display = 'none';
         speak("Pega los codos al cuerpo y mantente erguido.");
         isCalibrating = true;
@@ -84,7 +113,9 @@ async function initSystem() {
             speak("Listo.");
         }, 4500);
         camera.start();
-    } catch (e) { alert("Error: Use HTTPS y permita la cámara."); }
+    } catch (e) { 
+        alert("Error: " + e.name + " - " + e.message + "\nAsegúrese de usar HTTPS, permitir la cámara y cerrar otras apps que la usen."); 
+    }
 }
 
 function onResults(res) {
@@ -146,10 +177,9 @@ function onResults(res) {
         speak(m);
     }
 
-        // --- DIBUJO (Sustituye tu función d y las 3 llamadas siguientes por esto) ---
+    // --- DIBUJO ---
     function d(pts, conn, col, drawPoints = false) {
         if(!pts) return;
-        // Dibujar las líneas (huesos)
         for (const c of conn) {
             const f = pts[c[0]], t = pts[c[1]];
             ctx.beginPath(); 
@@ -157,7 +187,6 @@ function onResults(res) {
             ctx.lineTo(oX + (t.x * dW), oY + (t.y * dH));
             ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
         }
-        // Dibujar los puntos (articulaciones) solo si se activa el flag
         if(drawPoints) {
             for (const pt of pts) {
                 ctx.beginPath();
@@ -177,4 +206,6 @@ const holistic = new Holistic({locateFile: (f) => `https://cdn.jsdelivr.net/npm/
 holistic.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5 });
 holistic.onResults(onResults);
 const camera = new Camera(video, { onFrame: async () => { await holistic.send({image: video}); } });
-</script> </body> </html>
+</script> 
+</body> 
+</html>
