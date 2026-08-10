@@ -7,7 +7,6 @@
 
     <title>Violin Teacher - Bio-Web Pro v30</title>
 
-    <!-- MediaPipe -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"
         crossorigin="anonymous"></script>
 
@@ -237,7 +236,6 @@
 
 <body>
 
-    <!-- CALIBRACIÓN -->
     <div id="calibration-overlay">
 
         <h2 style="color: var(--cyan); letter-spacing: 2px;">
@@ -257,7 +255,6 @@
     </div>
 
 
-    <!-- CONTENIDO PRINCIPAL -->
     <div id="container">
 
         <video
@@ -270,7 +267,6 @@
         <canvas id="output_canvas"></canvas>
 
 
-        <!-- MÉTRICAS IZQUIERDA -->
         <div id="data-left" class="panel">
 
             <div style="
@@ -293,10 +289,8 @@
             </span>
 
             <div class="meter-bg">
-                <div class="tilt-center-line"></div>
                 <div id="head-indicator"></div>
             </div>
-
 
             <span class="label">
                 Tensión Lado Violín
@@ -305,7 +299,6 @@
             <div class="bar-bg">
                 <div id="bar-violin" class="bar-fill"></div>
             </div>
-
 
             <span class="label">
                 Altura Violín
@@ -318,7 +311,6 @@
         </div>
 
 
-        <!-- MÉTRICAS DERECHA -->
         <div id="data-right" class="panel">
 
             <div style="
@@ -332,7 +324,6 @@
                 TÉCNICA DE ARCO
             </div>
 
-
             <span class="label">
                 Ángulo Codo
             </span>
@@ -345,7 +336,6 @@
                 <div id="fill-elbow" class="meter-fill"></div>
             </div>
 
-
             <span class="label">
                 Cuerda Estimada
             </span>
@@ -356,7 +346,6 @@
                 style="color:var(--cyan)">
                 --
             </span>
-
 
             <span class="label">
                 Tensión Lado Arco
@@ -369,7 +358,6 @@
         </div>
 
 
-        <!-- MENSAJE -->
         <div id="instruction-box" class="panel">
 
             <div
@@ -502,7 +490,6 @@
                     "Pega los codos al cuerpo y mantente erguido."
                 );
 
-
                 setTimeout(() => {
 
                     if (samples.length > 0) {
@@ -563,7 +550,7 @@
 
 
         /* =========================================================
-           RESULTADOS DE MEDIAPIPE
+           RESULTADOS MEDIAPIPE
         ========================================================= */
 
         function onResults(res) {
@@ -577,7 +564,7 @@
 
 
             /* =====================================================
-               DIMENSIONES DEL CANVAS
+               CANVAS
             ===================================================== */
 
             const vW =
@@ -619,7 +606,7 @@
 
 
             /* =====================================================
-               DIBUJAR IMAGEN
+               IMAGEN
             ===================================================== */
 
             ctx.save();
@@ -631,10 +618,8 @@
                 vH
             );
 
-
             ctx.translate(vW, 0);
             ctx.scale(-1, 1);
-
 
             ctx.drawImage(
                 res.image,
@@ -646,12 +631,11 @@
 
 
             /* =====================================================
-               LANDMARKS
+               LANDMARKS CORPORALES
             ===================================================== */
 
             const p =
                 res.poseLandmarks;
-
 
             const sV = p[11];
             const sA = p[12];
@@ -666,7 +650,7 @@
 
 
             /* =====================================================
-               1. INCLINACIÓN DE CABEZA
+               INCLINACIÓN DE CABEZA
             ===================================================== */
 
             const tiltH =
@@ -714,7 +698,7 @@
 
 
             /* =====================================================
-               2. ÁNGULO DEL CODO
+               ÁNGULO DEL CODO
             ===================================================== */
 
             const angleShoulderArm =
@@ -760,31 +744,22 @@
 
 
             /* =====================================================
-               3. CUERDA ESTIMADA
+               CUERDA ESTIMADA
             ===================================================== */
 
             let str;
 
-
             if (angE < 25) {
-
                 str = "MI (E)";
-
             }
             else if (angE < 45) {
-
                 str = "LA (A)";
-
             }
             else if (angE < 65) {
-
                 str = "RE (D)";
-
             }
             else {
-
                 str = "SOL (G)";
-
             }
 
 
@@ -794,7 +769,7 @@
 
 
             /* =====================================================
-               4. TENSIÓN
+               TENSIÓN
             ===================================================== */
 
             const shoulderDistance =
@@ -824,7 +799,6 @@
 
                 const currentGap =
                     (gV + gA) / 2;
-
 
                 if (
                     Number.isFinite(
@@ -896,7 +870,7 @@
 
 
             /* =====================================================
-               5. ALTURA DEL VIOLÍN
+               ALTURA DEL VIOLÍN
             ===================================================== */
 
             const yM =
@@ -915,9 +889,7 @@
                 vAdv = "Alto";
 
             }
-            else if (
-                wV.y > yS + 0.02
-            ) {
+            else if (wV.y > yS + 0.02) {
 
                 vAdv = "Bajo";
 
@@ -938,7 +910,7 @@
 
 
             /* =====================================================
-               6. MENSAJE PRINCIPAL
+               MENSAJE
             ===================================================== */
 
             if (isCalibrated) {
@@ -967,9 +939,7 @@
                         "Endereza la cabeza";
 
                 }
-                else if (
-                    vAdv !== "Ok"
-                ) {
+                else if (vAdv !== "Ok") {
 
                     m =
                         vAdv === "Alto"
@@ -990,7 +960,7 @@
 
 
             /* =====================================================
-               7. FUNCIÓN DE DIBUJO
+               FUNCIÓN DE DIBUJO
             ===================================================== */
 
             function d(
@@ -1006,10 +976,6 @@
                     return;
                 }
 
-
-                /* ================================================
-                   CONEXIONES
-                ================================================= */
 
                 for (const c of conn) {
 
@@ -1058,18 +1024,15 @@
 
                     ctx.beginPath();
 
-
                     ctx.moveTo(
                         oX + (f.x * dW),
                         oY + (f.y * dH)
                     );
 
-
                     ctx.lineTo(
                         oX + (t.x * dW),
                         oY + (t.y * dH)
                     );
-
 
                     ctx.strokeStyle =
                         col;
@@ -1077,14 +1040,16 @@
                     ctx.lineWidth =
                         4;
 
+                    ctx.lineCap =
+                        "round";
+
+                    ctx.lineJoin =
+                        "round";
+
                     ctx.stroke();
 
                 }
 
-
-                /* ================================================
-                   PUNTOS
-                ================================================= */
 
                 if (drawDots) {
 
@@ -1097,11 +1062,9 @@
                         const pt =
                             pts[i];
 
-
                         if (!pt) {
                             continue;
                         }
-
 
                         if (
                             hiddenPoints.includes(i)
@@ -1112,7 +1075,6 @@
 
                         ctx.beginPath();
 
-
                         ctx.arc(
                             oX + (pt.x * dW),
                             oY + (pt.y * dH),
@@ -1121,10 +1083,8 @@
                             2 * Math.PI
                         );
 
-
                         ctx.fillStyle =
                             "white";
-
 
                         ctx.fill();
 
@@ -1136,22 +1096,14 @@
 
 
             /* =====================================================
-               8. ESQUELETO CORPORAL
+               ESQUELETO CORPORAL
                
-               Se ocultan visualmente:
-
-               0-10  → cara
-               17-22 → puntos de manos del pose
-
-               Se mantienen 23 y 24 para conservar:
-
-               23 ───────── 24
-               │              │
-               │              │
-               piernas
+               0-10  ocultos
+               17-22 ocultos
                
-               Se eliminan únicamente las conexiones laterales
-               del tronco:
+               23-24 permanecen visibles.
+               
+               Se eliminan solamente:
                
                11 → 23
                12 → 24
@@ -1189,13 +1141,7 @@
 
 
             /* =====================================================
-               9. LÍNEA CENTRAL DEL TRONCO
-               
-               Centro de hombros
-                       │
-                       │
-                       │
-               Centro de caderas
+               LÍNEA CENTRAL DEL TRONCO
             ===================================================== */
 
             const shoulderCenterX =
@@ -1240,7 +1186,6 @@
 
                 ctx.beginPath();
 
-
                 ctx.moveTo(
                     oX +
                     (shoulderCenterX * dW),
@@ -1248,7 +1193,6 @@
                     oY +
                     (shoulderCenterY * dH)
                 );
-
 
                 ctx.lineTo(
                     oX +
@@ -1258,12 +1202,14 @@
                     (hipCenterY * dH)
                 );
 
-
                 ctx.strokeStyle =
                     '#00FFFF';
 
                 ctx.lineWidth =
                     4;
+
+                ctx.lineCap =
+                    "round";
 
                 ctx.stroke();
 
@@ -1271,7 +1217,7 @@
 
 
             /* =====================================================
-               10. MANOS
+               MANOS
             ===================================================== */
 
             if (res.leftHandLandmarks) {
@@ -1298,13 +1244,107 @@
             }
 
 
-            /*
-             * NO SE DIBUJA NINGUNA CARA.
-             *
-             * Los landmarks faciales siguen siendo procesados
-             * por MediaPipe, pero no se representa ningún
-             * ojo, boca, sonrisa ni emoji sobre la imagen.
-             */
+            /* =====================================================
+               SILUETA DE LA CABEZA
+               
+               Solo se dibuja el contorno exterior.
+               
+               No se dibujan:
+               - ojos
+               - nariz
+               - boca
+               - puntos faciales
+               - malla facial
+            ===================================================== */
+
+            if (
+                res.faceLandmarks &&
+                typeof FACEMESH_FACE_OVAL !== "undefined"
+            ) {
+
+                const face =
+                    res.faceLandmarks;
+
+
+                ctx.beginPath();
+
+
+                let firstPoint = true;
+
+
+                for (
+                    const connection
+                    of FACEMESH_FACE_OVAL
+                ) {
+
+                    const start =
+                        face[connection[0]];
+
+                    const end =
+                        face[connection[1]];
+
+
+                    if (
+                        !start ||
+                        !end
+                    ) {
+                        continue;
+                    }
+
+
+                    const startX =
+                        oX +
+                        (start.x * dW);
+
+                    const startY =
+                        oY +
+                        (start.y * dH);
+
+
+                    const endX =
+                        oX +
+                        (end.x * dW);
+
+                    const endY =
+                        oY +
+                        (end.y * dH);
+
+
+                    if (firstPoint) {
+
+                        ctx.moveTo(
+                            startX,
+                            startY
+                        );
+
+                        firstPoint = false;
+
+                    }
+
+
+                    ctx.lineTo(
+                        endX,
+                        endY
+                    );
+
+                }
+
+
+                ctx.strokeStyle =
+                    '#00FFFF';
+
+                ctx.lineWidth =
+                    3;
+
+                ctx.lineCap =
+                    'round';
+
+                ctx.lineJoin =
+                    'round';
+
+                ctx.stroke();
+
+            }
 
 
             ctx.restore();
