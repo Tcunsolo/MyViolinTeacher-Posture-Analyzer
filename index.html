@@ -1,124 +1,221 @@
-<!DOCTYPE html> <html lang="es"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Violin Teacher Bio-Analysis</title>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-
-<style>
-    :root { --cyan: #00FFFF; --magenta: #FF00FF; --green: #00FF00; --red: #FF3B30; --yellow: #FFCC00; --deep: #050508; }
-    body, html { margin: 0; padding: 0; background: var(--deep); color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100%; width: 100%; }
-    #container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
-    video { display: none; }
-    canvas { transform: scaleX(-1); max-width: 100%; max-height: 100%; border-radius: 15px; border: 1px solid #1a1a1a; }
-
-    .panel { position: absolute; background: rgba(0,0,0,0.85); border: 1px solid rgba(0,255,255,0.25); padding: 15px; border-radius: 15px; pointer-events: none; backdrop-filter: blur(10px); z-index: 5; }
-    #data-left { top: 20px; left: 20px; width: 220px; }
-    #instruction-box { bottom: 30px; left: 50%; transform: translateX(-50%); width: 65%; text-align: center; border: 2px solid var(--cyan); }
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Violin Teacher - Bio-Web Pro v23</title>
     
-    .label { color: #777; font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 2px; }
-    .val { color: white; font-size: 16px; font-weight: bold; margin-bottom: 5px; display: block; }
-    
-    .tilt-meter-bg { width: 100%; height: 20px; background: #1a1a1a; border-radius: 10px; margin-bottom: 15px; position: relative; display: flex; align-items: center; border: 1px solid #333; }
-    .tilt-center-line { position: absolute; left: 50%; width: 2px; height: 100%; background: rgba(255,255,255,0.2); }
-    .tilt-indicator { position: absolute; width: 12px; height: 12px; border-radius: 50%; left: 50%; transform: translateX(-50%); transition: left 0.1s ease-out; }
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 
-    .bar-bg { width: 100%; height: 8px; background: #1a1a1a; border-radius: 4px; margin: 4px 0 15px; overflow: hidden; }
-    .bar-fill { height: 100%; width: 0%; background: var(--green); transition: 0.2s; }
-    
-    #calibration-overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-    #btn-start { background: var(--cyan); color: black; border: none; padding: 20px 50px; border-radius: 40px; font-weight: 900; cursor: pointer; font-size: 14px; text-transform: uppercase; margin-top: 30px; pointer-events: auto; }
-</style>
-</head> <body>
-<div id="calibration-overlay"> <h2 id="ui-cal-title">CALIBRACIÓN</h2> <p id="ui-cal-instr" style="max-width: 450px; color: #aaa; font-size: 14px;">Pega los codos al cuerpo y mantente erguido.</p> <button id="btn-start" onclick="initSystem()">ACTIVAR CÁMARA</button> </div>
-<div id="container"> <video id="input_video" playsinline></video> <canvas id="output_canvas"></canvas>
-<div id="data-left" class="panel">
-    <div id="ui-panel-title" style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">MÉTRICAS IA</div>
-    <span id="ui-label-head" class="label">Cabeza</span><span id="txt-h" class="val">0°</span>
-    <div class="tilt-meter-bg"><div class="tilt-center-line"></div><div id="head-indicator" class="tilt-indicator"></div></div>
-    <span id="ui-label-shoulders" class="label">Hombros</span><span id="txt-s" class="val">0°</span>
-    <span id="ui-label-bow" class="label">Lado Arco</span><div class="bar-bg"><div id="bar-arco" class="bar-fill"></div></div>
-    <span id="ui-label-violin" class="label">Lado Violín</span><div class="bar-bg"><div id="bar-violin" class="bar-fill"></div></div>
-    <span id="ui-label-height" class="label">Altura Violín</span><span id="txt-v" class="val">Ok</span>
+    <style>
+        :root { --cyan: #00FFFF; --magenta: #FF00FF; --green: #00FF00; --red: #FF3B30; --yellow: #FFCC00; --deep: #050508; }
+        body, html { margin: 0; padding: 0; background: var(--deep); color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100%; width: 100%; }
+        #container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: black; }
+        video { display: none; }
+        /* El canvas ahora se adapta sin estirarse */
+        canvas { border-radius: 15px; border: 1px solid #1a1a1a; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+
+        .panel { position: absolute; background: rgba(0,0,0,0.85); border: 1px solid rgba(0,255,255,0.25); padding: 15px; border-radius: 15px; pointer-events: none; backdrop-filter: blur(10px); z-index: 5; }
+        #data-left { top: 20px; left: 20px; width: 220px; }
+        #instruction-box { bottom: 30px; left: 50%; transform: translateX(-50%); width: 65%; text-align: center; border: 2px solid var(--cyan); }
+        
+        .label { color: #777; font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 2px; }
+        .val { color: white; font-size: 16px; font-weight: bold; margin-bottom: 5px; display: block; }
+        
+        .tilt-meter-bg { width: 100%; height: 20px; background: #1a1a1a; border-radius: 10px; margin-bottom: 15px; position: relative; display: flex; align-items: center; border: 1px solid #333; }
+        .tilt-center-line { position: absolute; left: 50%; width: 2px; height: 100%; background: rgba(255,255,255,0.2); }
+        .tilt-indicator { position: absolute; width: 12px; height: 12px; border-radius: 50%; left: 50%; transform: translateX(-50%); transition: left 0.1s ease-out; border: 2px solid rgba(0,0,0,0.5); }
+
+        .bar-bg { width: 100%; height: 8px; background: #1a1a1a; border-radius: 4px; margin: 4px 0 15px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 0%; background: var(--green); transition: 0.2s; }
+        
+        #calibration-overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        #btn-start { background: var(--cyan); color: black; border: none; padding: 20px 50px; border-radius: 40px; font-weight: 900; cursor: pointer; font-size: 14px; text-transform: uppercase; margin-top: 30px; pointer-events: auto; box-shadow: 0 0 20px rgba(0,255,255,0.3); }
+    </style>
+</head>
+<body>
+
+<div id="calibration-overlay">
+    <h2 id="ui-cal-title">CALIBRACIÓN</h2>
+    <p id="ui-cal-instr" style="max-width: 450px; color: #aaa; font-size: 14px; line-height: 1.6;">Pega los codos al cuerpo y mantente erguido para fijar el nivel de relajación.</p>
+    <button id="btn-start" onclick="initSystem()">ACTIVAR CÁMARA</button>
 </div>
 
-<div id="instruction-box" class="panel"><div id="main-advice" style="font-size: 20px; color: var(--cyan); font-weight: bold;">...</div></div>
+<div id="container">
+    <video id="input_video" playsinline></video>
+    <canvas id="output_canvas"></canvas>
+
+    <div id="data-left" class="panel">
+        <div id="ui-panel-title" style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">MÉTRICAS IA</div>
+        <span id="ui-label-head" class="label">Cabeza</span><span id="txt-h" class="val">0°</span>
+        <div class="tilt-meter-bg"><div class="tilt-center-line"></div><div id="head-indicator" class="tilt-indicator"></div></div>
+        <span id="ui-label-shoulders" class="label">Hombros</span><span id="txt-s" class="val">0°</span>
+        <span id="ui-label-bow" class="label">Lado Arco</span><div class="bar-bg"><div id="bar-arco" class="bar-fill"></div></div>
+        <span id="ui-label-violin" class="label">Lado Violín</span><div class="bar-bg"><div id="bar-violin" class="bar-fill"></div></div>
+        <span id="ui-label-height" class="label">Altura Violín</span><span id="txt-v" class="val">Ok</span>
+    </div>
+
+    <div id="instruction-box" class="panel"><div id="main-advice" style="font-size: 20px; color: var(--cyan); font-weight: bold;">...</div></div>
 </div>
-<script> const userLang = navigator.language.startsWith('en') ? 'en' : 'es'; const i18n = { es: { calTitle: "CALIBRACIÓN POSTURAL", calInstr: "Pega <b>AMBOS CODOS</b> al cuerpo y mantente erguido.", btnStart: "Iniciar Cámara", panelTitle: "MÉTRICAS BIOMÉTRICAS", labelHead: "Cabeza", labelShoulders: "Hombros", labelBow: "Lado Arco", labelViolin: "Lado Violín", labelHeight: "Altura Violín", ok: "Ok", low: "Bajo", high: "Alto", ready: "¡Listo!", calibrating: "CALIBRANDO...", adviceOk: "Cuerpo alineado ✓", voiceCal: "Pega los codos al cuerpo y mantente erguido." }, en: { calTitle: "POSTURE CALIBRATION", calInstr: "Keep <b>BOTH ELBOWS</b> against your body and stand straight.", btnStart: "Start Camera", panelTitle: "BIOMETRIC ANALYSIS", labelHead: "Head", labelShoulders: "Shoulders", labelBow: "Bow Side", labelViolin: "Violin Side", labelHeight: "Violin Height", ok: "Ok", low: "Low", high: "High", ready: "Ready!", calibrating: "CALIBRATING...", adviceOk: "Body aligned ✓", voiceCal: "Keep your elbows against your body and stand straight." } };
-const t = i18n[userLang];
-document.getElementById('ui-cal-title').innerText = t.calTitle;
-document.getElementById('ui-cal-instr').innerHTML = t.calInstr;
-document.getElementById('btn-start').innerText = t.btnStart;
-document.getElementById('ui-panel-title').innerText = t.panelTitle;
-document.getElementById('ui-label-head').innerText = t.labelHead;
-document.getElementById('ui-label-shoulders').innerText = t.labelShoulders;
-document.getElementById('ui-label-bow').innerText = t.labelBow;
-document.getElementById('ui-label-violin').innerText = t.labelViolin;
-document.getElementById('ui-label-height').innerText = t.labelHeight;
 
-const video = document.getElementById('input_video');
-const canvas = document.getElementById('output_canvas');
-const ctx = canvas.getContext('2d');
-let baseGap = 0.45, isCalibrating = false, isCalibrated = false, lastSpeak = 0, samples = [];
+<script>
+    const userLang = navigator.language.startsWith('en') ? 'en' : 'es';
+    const i18n = {
+        es: {
+            calTitle: "CALIBRACIÓN POSTURAL", calInstr: "Pega <b>AMBOS CODOS</b> al cuerpo y mantente erguido.",
+            btnStart: "Iniciar Cámara", panelTitle: "MÉTRICAS BIOMÉTRICAS", labelHead: "Inclinación Cabeza",
+            labelShoulders: "Inclinación Hombros", labelBow: "Tensión Lado Arco", labelViolin: "Tensión Lado Violín",
+            labelHeight: "Altura Violín", ok: "Ok", low: "Bajo", high: "Alto", ready: "¡Listo!", 
+            calibrating: "CALIBRANDO...", adviceOk: "Cuerpo alineado ✓", voiceCal: "Pega los codos al cuerpo y mantente erguido.",
+            advBow: "Baja el hombro del arco", advViolin: "Baja el hombro del violín", advHead: "Endereza la cabeza",
+            advRaise: "Sube el violín", advLower: "Baja el violín"
+        },
+        en: {
+            calTitle: "POSTURE CALIBRATION", calInstr: "Keep <b>BOTH ELBOWS</b> against your body and stand straight.",
+            btnStart: "Start Camera", panelTitle: "BIOMETRIC ANALYSIS", labelHead: "Head Tilt",
+            labelShoulders: "Shoulder Tilt", labelBow: "Bow Side Tension", labelViolin: "Violin Side Tension",
+            labelHeight: "Violin Height", ok: "Ok", low: "Low", high: "High", ready: "Ready!", 
+            calibrating: "CALIBRATING...", adviceOk: "Body aligned ✓", voiceCal: "Keep your elbows against your body and stand straight.",
+            advBow: "Lower your bow shoulder", advViolin: "Lower your violin shoulder", advHead: "Straighten your head",
+            advRaise: "Raise the violin", advLower: "Lower the violin"
+        }
+    };
 
-function speak(text) {
-    if (Date.now() - lastSpeak < 4500) return;
-    const u = new SpeechSynthesisUtterance(text); u.lang = userLang === 'en' ? 'en-US' : 'es-ES';
-    window.speechSynthesis.speak(u); lastSpeak = Date.now();
-}
+    const t = i18n[userLang];
+    document.getElementById('ui-cal-title').innerText = t.calTitle;
+    document.getElementById('ui-cal-instr').innerHTML = t.calInstr;
+    document.getElementById('btn-start').innerText = t.btnStart;
+    document.getElementById('ui-panel-title').innerText = t.panelTitle;
+    document.getElementById('ui-label-head').innerText = t.labelHead;
+    document.getElementById('ui-label-shoulders').innerText = t.labelShoulders;
+    document.getElementById('ui-label-bow').innerText = t.labelBow;
+    document.getElementById('ui-label-violin').innerText = t.labelViolin;
+    document.getElementById('ui-label-height').innerText = t.labelHeight;
 
-async function initSystem() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream; video.play();
-        document.getElementById('btn-start').style.display = 'none';
-        speak(t.voiceCal);
-        isCalibrating = true;
-        setTimeout(() => {
-            if (samples.length > 0) baseGap = samples.reduce((a,b)=>a+b)/samples.length;
-            isCalibrating = false; isCalibrated = true;
-            document.getElementById('calibration-overlay').style.display = 'none';
-            speak(t.ready);
-        }, 4500);
-        camera.start();
-    } catch (e) {
-        alert("Error de cámara: Asegúrate de estar en una conexión segura (HTTPS).");
+    const video = document.getElementById('input_video');
+    const canvas = document.getElementById('output_canvas');
+    const ctx = canvas.getContext('2d');
+    let baseGap = 0.45, isCalibrating = false, isCalibrated = false, lastSpeak = 0, samples = [];
+
+    function speak(text) {
+        if (Date.now() - lastSpeak < 4500) return;
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = userLang === 'en' ? 'en-US' : 'es-ES';
+        window.speechSynthesis.speak(u); lastSpeak = Date.now();
     }
-}
 
-function onResults(res) {
-    if (!res.poseLandmarks || (!isCalibrated && !isCalibrating)) return;
-    ctx.save(); ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(res.image, 0, 0, canvas.width, canvas.height);
-    const p = res.poseLandmarks;
-    const sV = p[11], sA = p[12], eV = p[7], eA = p[8], wV = p[15];
-    const realW = Math.abs(sA.x - sV.x);
-    
-    const tiltS = Math.atan2(sV.y - sA.y, realW) * (180/Math.PI);
-    const tiltH = Math.atan2(eA.y - eV.y, Math.abs(eA.x - eV.x)) * (180/Math.PI);
+    async function initSystem() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+            video.srcObject = stream; await video.play();
+            document.getElementById('btn-start').style.display = 'none';
+            speak(t.voiceCal);
+            isCalibrating = true;
+            setTimeout(() => {
+                if (samples.length > 0) baseGap = samples.reduce((a,b)=>a+b)/samples.length;
+                isCalibrating = false; isCalibrated = true;
+                document.getElementById('calibration-overlay').style.display = 'none';
+                speak(t.ready);
+            }, 4500);
+            camera.start();
+        } catch (e) { alert("Error: Permitir cámara en HTTPS."); }
+    }
 
-    document.getElementById('txt-h').innerText = Math.abs(Math.round(tiltH)) + "°";
-    const hInd = document.getElementById('head-indicator');
-    hInd.style.background = Math.abs(tiltH) > 8 ? "var(--red)" : "var(--green)";
-    hInd.style.left = (50 + (tiltH * 4)) + "%";
-    document.getElementById('txt-s').innerText = Math.round(Math.abs(tiltS)) + "°";
+    function onResults(res) {
+        if (!res.poseLandmarks || (!isCalibrated && !isCalibrating)) return;
 
-    const gV = (sV.y - eV.y)/realW, gA = (sA.y - eA.y)/realW;
-    if (isCalibrating) samples.push((gV+gA)/2);
+        // --- LÓGICA DE ADAPTACIÓN DE PANTALLA ---
+        const canvasW = window.innerWidth;
+        const canvasH = window.innerHeight;
+        canvas.width = canvasW;
+        canvas.height = canvasH;
 
-    document.getElementById('bar-arco').style.width = Math.min(100, Math.max(0, ((baseGap - gA) / (baseGap * 0.3)) * 100)) + "%";
-    document.getElementById('bar-violin').style.width = Math.min(100, Math.max(0, ((baseGap - gV) / (baseGap * 0.3)) * 100)) + "%";
-    
-    let vAdv = t.ok;
-    if (wV.y < (p[9].y+p[10].y)/2 - 0.02) vAdv = t.high; else if (wV.y > (sV.y+sA.y)/2 + 0.02) vAdv = t.low;
-    document.getElementById('txt-v').innerText = vAdv;
+        const imgW = res.image.width;
+        const imgH = res.image.height;
+        const ratio = Math.min(canvasW / imgW, canvasH / imgH);
+        const newW = imgW * ratio;
+        const newH = imgH * ratio;
+        const offX = (canvasW - newW) / 2;
+        const offY = (canvasH - newH) / 2;
 
-    drawConnectors(ctx, p, POSE_CONNECTIONS, {color: '#00FFFF', lineWidth: 4});
-    if (res.leftHandLandmarks) drawConnectors(ctx, res.leftHandLandmarks, HAND_CONNECTIONS, {color: '#FF00FF'});
-    if (res.rightHandLandmarks) drawConnectors(ctx, res.rightHandLandmarks, HAND_CONNECTIONS, {color: '#00FFFF'});
-    ctx.restore();
-}
+        ctx.save();
+        ctx.clearRect(0, 0, canvasW, canvasH);
+        
+        // Dibujamos el video centrado y proporcional (Modo Espejo manual)
+        ctx.translate(canvasW, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(res.image, (canvasW - newW) / 2, offY, newW, newH);
 
-const holistic = new Holistic({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${f}`});
-holistic.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5 });
-holistic.onResults(onResults);
-const camera = new Camera(video, { onFrame: async () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; await holistic.send({image: video}); } });
-</script> </body> </html>
+        const p = res.poseLandmarks;
+        const hV = res.leftHandLandmarks, hA = res.rightHandLandmarks;
+
+        // MAPEO (11=V, 12=A, 15=Muñeca V)
+        const sV = p[11], sA = p[12], eV = p[7], eA = p[8], wV = p[15];
+        const realW = Math.abs(sA.x - sV.x);
+        
+        const tiltS = Math.atan2(sV.y - sA.y, realW) * (180/Math.PI);
+        const tiltH = Math.atan2(eA.y - eV.y, Math.abs(eA.x - eV.x)) * (180/Math.PI);
+
+        // UI Cabeza
+        const absH = Math.abs(Math.round(tiltH));
+        document.getElementById('txt-h').innerText = absH + "°";
+        let hCol = (absH > 8) ? "var(--red)" : (absH > 4 ? "var(--yellow)" : "var(--green)");
+        document.getElementById('txt-h').style.color = hCol;
+        document.getElementById('head-indicator').style.background = hCol;
+        document.getElementById('head-indicator').style.left = (50 + (tiltH * 4)) + "%";
+        document.getElementById('txt-s').innerText = Math.round(Math.abs(tiltS)) + "°";
+
+        // Tensiones
+        const gV = (sV.y - eV.y)/realW, gA = (sA.y - eA.y)/realW;
+        if (isCalibrating) samples.push((gV+gA)/2);
+        const tenV = Math.min(100, Math.max(0, ((baseGap - gV) / (baseGap * 0.3)) * 100));
+        const tenA = Math.min(100, Math.max(0, ((baseGap - gA) / (baseGap * 0.3)) * 100));
+        document.getElementById('bar-arco').style.width = tenA + "%";
+        document.getElementById('bar-violin').style.width = tenV + "%";
+        document.getElementById('bar-arco').style.background = tenA > 45 ? "var(--red)" : "var(--green)";
+        document.getElementById('bar-violin').style.background = tenV > 45 ? "var(--red)" : "var(--green)";
+
+        // Altura
+        const yM = (p[9].y + p[10].y) / 2, yS = (p[11].y + p[12].y) / 2;
+        let vAdv = t.ok;
+        if (wV.y < yM - 0.02) vAdv = t.high; else if (wV.y > yS + 0.02) vAdv = t.low;
+        document.getElementById('txt-v').innerText = vAdv;
+        document.getElementById('txt-v').style.color = vAdv === t.ok ? "var(--green)" : "var(--red)";
+
+        if (!isCalibrating) {
+            let m = t.adviceOk;
+            if (tenA > 45) m = t.advBow;
+            else if (tenV > 45) m = t.advViolin;
+            else if (absH > 8) m = t.advHead;
+            else if (vAdv !== t.ok) m = vAdv === t.high ? t.advLower : t.advRaise;
+            document.getElementById('main-advice').innerText = m;
+            if (m !== t.adviceOk) speak(m);
+        }
+
+        // Función para mapear puntos normalizados al canvas escalado
+        function drawConnect(landmarks, connections, color) {
+            if(!landmarks) return;
+            for (const c of connections) {
+                const from = landmarks[c[0]]; const to = landmarks[c[1]];
+                ctx.beginPath();
+                ctx.moveTo(offX + (from.x * newW), offY + (from.y * newH));
+                ctx.lineTo(offX + (to.x * newW), offY + (to.y * newH));
+                ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke();
+            }
+        }
+
+        drawConnect(p, POSE_CONNECTIONS, '#00FFFF');
+        if (hV) drawConnect(hV, HAND_CONNECTIONS, '#FF00FF');
+        if (hA) drawConnect(hA, HAND_CONNECTIONS, '#00FFFF');
+        ctx.restore();
+    }
+
+    const holistic = new Holistic({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${f}`});
+    holistic.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5 });
+    holistic.onResults(onResults);
+    const camera = new Camera(video, { onFrame: async () => { await holistic.send({image: video}); } });
+</script>
+</body>
+</html>
