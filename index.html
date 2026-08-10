@@ -1,193 +1,1235 @@
-<!DOCTYPE html> 
-<html lang="es"> 
-<head> 
-<meta charset="UTF-8"> 
-<meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-<title>Violin Teacher - Bio-Web Pro v30</title>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<!DOCTYPE html>
+<html lang="es">
 
-<style>
-    :root { --cyan: #00FFFF; --magenta: #FF00FF; --green: #00FF00; --red: #FF3B30; --yellow: #FFCC00; --deep: #050508; }
-    body, html { margin: 0; padding: 0; background: var(--deep); color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100%; width: 100%; }
-    #container { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: black; }
-    video { display: none; }
-    canvas { border-radius: 10px; border: 1px solid #1a1a1a; }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    .panel { position: absolute; background: rgba(0,0,0,0.85); border: 1px solid rgba(0,255,255,0.25); padding: 15px; border-radius: 15px; pointer-events: none; backdrop-filter: blur(10px); z-index: 5; }
-    #data-left { top: 20px; left: 20px; width: 220px; }
-    #data-right { top: 20px; right: 20px; width: 220px; }
-    #instruction-box { bottom: 30px; left: 50%; transform: translateX(-50%); width: 60%; text-align: center; border: 2px solid var(--cyan); }
-    
-    .label { color: #777; font-size: 10px; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 2px; }
-    .val { color: white; font-size: 16px; font-weight: bold; margin-bottom: 8px; display: block; }
-    
-    .meter-bg { width: 100%; height: 18px; background: #111; border-radius: 9px; position: relative; margin-bottom: 12px; border: 1px solid #333; overflow: hidden; }
-    .meter-fill { height: 100%; width: 0%; background: var(--cyan); transition: 0.3s; }
-    #head-indicator { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--green); left: 50%; top: 3px; transform: translateX(-50%); transition: left 0.1s ease-out; }
+    <title>Violin Teacher - Bio-Web Pro v30</title>
 
-    .bar-bg { width: 100%; height: 8px; background: #1a1a1a; border-radius: 4px; margin: 4px 0 15px; overflow: hidden; }
-    .bar-fill { height: 100%; width: 0%; background: var(--green); transition: 0.2s; }
-    
-    #calibration-overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-    #btn-start { background: var(--cyan); color: black; border: none; padding: 20px 50px; border-radius: 40px; font-weight: 900; cursor: pointer; font-size: 14px; text-transform: uppercase; margin-top: 30px; pointer-events: auto; }
-</style>
-</head> 
-<body>
-<div id="calibration-overlay"> 
-    <h2 style="color: var(--cyan); letter-spacing: 2px;">CALIBRACIÓN POSTURAL</h2> 
-    <p style="max-width: 450px; color: #aaa; font-size: 14px;">Pega los codos al cuerpo y mantente erguido para calibrar.</p> 
-    <button id="btn-start" onclick="initSystem()">ACTIVAR CÁMARA</button> 
-</div>
+    <!-- MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"
+        crossorigin="anonymous"></script>
 
-<div id="container"> 
-    <video id="input_video" playsinline></video> 
-    <canvas id="output_canvas"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+        crossorigin="anonymous"></script>
 
-    <div id="data-left" class="panel">
-        <div style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">MÉTRICAS IA</div>
-        <span class="label">Inclinación Cabeza</span>
-        <span id="txt-h" class="val">0°</span>
-        <div class="meter-bg"><div class="tilt-center-line"></div><div id="head-indicator"></div></div>
-        <span class="label">Tensión Lado Violín</span>
-        <div class="bar-bg"><div id="bar-violin" class="bar-fill"></div></div>
-        <span class="label">Altura Violín</span>
-        <span id="txt-v" class="val">Ok</span>
-    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
 
-    <div id="data-right" class="panel">
-        <div style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">TÉCNICA DE ARCO</div>
-        <span class="label">Ángulo Codo</span>
-        <span id="txt-elbow" class="val">0°</span>
-        <div class="meter-bg"><div id="fill-elbow" class="meter-fill"></div></div>
-        <span class="label">Cuerda Estimada</span>
-        <span id="txt-string" class="val" style="color:var(--cyan)">--</span>
-        <span class="label">Tensión Lado Arco</span>
-        <div class="bar-bg"><div id="bar-arco" class="bar-fill"></div></div>
-    </div>
-
-    <div id="instruction-box" class="panel"><div id="main-advice" style="font-size: 20px; color: var(--cyan); font-weight: bold;">...</div></div>
-</div>
-
-<script>
-const video = document.getElementById('input_video'); 
-const canvas = document.getElementById('output_canvas'); 
-const ctx = canvas.getContext('2d'); 
-let baseGap = 0.45, isCalibrating = false, isCalibrated = false, lastSpeak = 0, lastMsg = "", samples = [];
-
-function speak(t) {
-    if (Date.now() - lastSpeak < 4500) return;
-    if (t === lastMsg && t === "Cuerpo alineado ✓") return;
-    const u = new SpeechSynthesisUtterance(t); u.lang = 'es-ES'; u.rate = 1.0;
-    window.speechSynthesis.speak(u);
-    lastSpeak = Date.now(); lastMsg = t;
-}
-
-async function initSystem() {
-    try {
-        // SOLUCIÓN PARA MÓVILES: Restricciones más flexibles
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-                facingMode: "user",
-                width: { ideal: 640 }, 
-                height: { ideal: 480 } 
-            } 
-        });
-        video.srcObject = stream; await video.play();
-        document.getElementById('btn-start').style.display = 'none';
-        speak("Pega los codos al cuerpo y mantente erguido.");
-        isCalibrating = true;
-        setTimeout(() => {
-            if (samples.length > 0) baseGap = samples.reduce((a,b)=>a+b)/samples.length;
-            isCalibrating = false; isCalibrated = true;
-            document.getElementById('calibration-overlay').style.display = 'none';
-            speak("Listo.");
-        }, 4500);
-        camera.start();
-    } catch (e) { 
-        alert("Error: Por favor, cierra otras apps que usen la cámara y asegúrate de usar Chrome/Safari."); 
-    }
-}
-
-function onResults(res) {
-    if (!res.poseLandmarks || (!isCalibrated && !isCalibrating)) return;
-
-    const vW = window.innerWidth, vH = window.innerHeight;
-    canvas.width = vW; canvas.height = vH;
-    const scale = Math.min(vW / res.image.width, vH / res.image.height);
-    const dW = res.image.width * scale, dH = res.image.height * scale;
-    const oX = (vW - dW) / 2, oY = (vH - dH) / 2;
-
-    ctx.save(); ctx.clearRect(0, 0, vW, vH);
-    ctx.translate(vW, 0); ctx.scale(-1, 1);
-    ctx.drawImage(res.image, (vW - dW) / 2, oY, dW, dH);
-
-    const p = res.poseLandmarks;
-    const sV = p[11], sA = p[12], eV = p[13], eA = p[14], wV = p[15], wA = p[16], hA = p[24];
-
-    // 1. Cabeza (CORREGIDO: Inversión de resta aplicada)
-    const tiltH = Math.atan2(p[8].y - p[7].y, Math.abs(p[8].x - p[7].x)) * (180/Math.PI);
-    document.getElementById('txt-h').innerText = Math.abs(Math.round(tiltH)) + "°";
-    const hInd = document.getElementById('head-indicator');
-    hInd.style.background = Math.abs(tiltH) > 8 ? "var(--red)" : "var(--green)";
-    hInd.style.left = (50 + (tiltH * 4)) + "%";
-
-    const angE = Math.abs(Math.atan2(eA.y - sA.y, eA.x - sA.x) - Math.atan2(hA.y - sA.y, hA.x - sA.x)) * (180/Math.PI);
-    document.getElementById('txt-elbow').innerText = Math.round(angE) + "°";
-    document.getElementById('fill-elbow').style.width = Math.min(100, (angE / 90) * 100) + "%";
-    let str = angE < 25 ? "MI (E)" : angE < 45 ? "LA (A)" : angE < 65 ? "RE (D)" : "SOL (G)";
-    document.getElementById('txt-string').innerText = str;
-
-    const gV = (sV.y - p[7].y)/Math.abs(sA.x - sV.x), gA = (sA.y - p[8].y)/Math.abs(sA.x - sV.x);
-    if (isCalibrating) samples.push((gV+gA)/2);
-    const tV = Math.min(100, Math.max(0, ((baseGap - gV) / (baseGap * 0.3)) * 100));
-    const tA = Math.min(100, Math.max(0, ((baseGap - gA) / (baseGap * 0.3)) * 100));
-    document.getElementById('bar-arco').style.width = tA + "%";
-    document.getElementById('bar-violin').style.width = tV + "%";
-    document.getElementById('bar-arco').style.background = tA > 45 ? "var(--red)" : "var(--green)";
-    document.getElementById('bar-violin').style.background = tV > 45 ? "var(--red)" : "var(--green)";
-
-    const yM = (p[9].y + p[10].y) / 2, yS = (sV.y + sA.y) / 2;
-    let vAdv = "Ok";
-    if (wV.y < yM - 0.02) vAdv = "Alto"; else if (wV.y > yS + 0.02) vAdv = "Bajo";
-    document.getElementById('txt-v').innerText = vAdv;
-    document.getElementById('txt-v').style.color = vAdv === "Ok" ? "var(--green)" : "var(--red)";
-
-    if (isCalibrated) {
-        let m = "Cuerpo alineado ✓";
-        if (tA > 45) m = "Baja el hombro del arco";
-        else if (tV > 45) m = "Baja el hombro del violín";
-        else if (Math.abs(tiltH) > 8) m = "Endereza la cabeza";
-        else if (vAdv !== "Ok") m = vAdv === "Alto" ? "Baja el violín" : "Sube el violín";
-        document.getElementById('main-advice').innerText = m;
-        speak(m);
-    }
-
-    // --- DIBUJO CON ARTICULACIONES Y COLORES ---
-    function d(pts, conn, col, drawDots = false) {
-        if(!pts) return;
-        for (const c of conn) {
-            const f = pts[c[0]], t = pts[c[1]];
-            ctx.beginPath(); ctx.moveTo(oX + (f.x * dW), oY + (f.y * dH));
-            ctx.lineTo(oX + (t.x * dW), oY + (t.y * dH));
-            ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
+    <style>
+        :root {
+            --cyan: #00FFFF;
+            --magenta: #FF00FF;
+            --green: #00FF00;
+            --red: #FF3B30;
+            --yellow: #FFCC00;
+            --deep: #050508;
         }
-        if(drawDots) {
-            for (const pt of pts) {
-                ctx.beginPath(); ctx.arc(oX + (pt.x * dW), oY + (pt.y * dH), 2, 0, 2 * Math.PI);
-                ctx.fillStyle = "white"; ctx.fill();
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            background: var(--deep);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: black;
+        }
+
+        video {
+            display: none;
+        }
+
+        canvas {
+            border-radius: 10px;
+            border: 1px solid #1a1a1a;
+        }
+
+        .panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid rgba(0, 255, 255, 0.25);
+            padding: 15px;
+            border-radius: 15px;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+            z-index: 5;
+        }
+
+        #data-left {
+            top: 20px;
+            left: 20px;
+            width: 220px;
+        }
+
+        #data-right {
+            top: 20px;
+            right: 20px;
+            width: 220px;
+        }
+
+        #instruction-box {
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            text-align: center;
+            border: 2px solid var(--cyan);
+        }
+
+        .label {
+            color: #777;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .val {
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .meter-bg {
+            width: 100%;
+            height: 18px;
+            background: #111;
+            border-radius: 9px;
+            position: relative;
+            margin-bottom: 12px;
+            border: 1px solid #333;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--cyan);
+            transition: 0.3s;
+        }
+
+        #head-indicator {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--green);
+            left: 50%;
+            top: 3px;
+            transform: translateX(-50%);
+            transition: left 0.1s ease-out;
+        }
+
+        .bar-bg {
+            width: 100%;
+            height: 8px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            margin: 4px 0 15px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--green);
+            transition: 0.2s;
+        }
+
+        #calibration-overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        #btn-start {
+            background: var(--cyan);
+            color: black;
+            border: none;
+            padding: 20px 50px;
+            border-radius: 40px;
+            font-weight: 900;
+            cursor: pointer;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-top: 30px;
+            pointer-events: auto;
+        }
+
+        #btn-start:disabled {
+            opacity: 0.5;
+            cursor: wait;
+        }
+
+        #camera-error {
+            display: none;
+            max-width: 500px;
+            margin-top: 25px;
+            padding: 15px;
+            border: 1px solid var(--red);
+            border-radius: 10px;
+            color: var(--red);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 700px) {
+            #data-left,
+            #data-right {
+                width: 150px;
+                padding: 10px;
+            }
+
+            #data-left {
+                top: 10px;
+                left: 10px;
+            }
+
+            #data-right {
+                top: 10px;
+                right: 10px;
+            }
+
+            .panel {
+                border-radius: 10px;
+            }
+
+            .val {
+                font-size: 13px;
+            }
+
+            #instruction-box {
+                width: 75%;
+                bottom: 15px;
+            }
+
+            #main-advice {
+                font-size: 15px !important;
             }
         }
-    }
-    d(p, POSE_CONNECTIONS, '#00FFFF'); 
-    if(res.leftHandLandmarks) d(res.leftHandLandmarks, HAND_CONNECTIONS, '#FF00FF', true); 
-    if(res.rightHandLandmarks) d(res.rightHandLandmarks, HAND_CONNECTIONS, '#FFCC00', true); 
-    ctx.restore();
-}
+    </style>
+</head>
 
-const holistic = new Holistic({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${f}`});
-holistic.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5 });
-holistic.onResults(onResults);
-const camera = new Camera(video, { onFrame: async () => { await holistic.send({image: video}); } });
-</script> </body> </html>
+<body>
+
+    <!-- CALIBRACIÓN -->
+    <div id="calibration-overlay">
+
+        <h2 style="color: var(--cyan); letter-spacing: 2px;">
+            CALIBRACIÓN POSTURAL
+        </h2>
+
+        <p style="max-width: 450px; color: #aaa; font-size: 14px;">
+            Pega los codos al cuerpo y mantente erguido para calibrar.
+        </p>
+
+        <button id="btn-start" onclick="initSystem()">
+            ACTIVAR CÁMARA
+        </button>
+
+        <div id="camera-error"></div>
+
+    </div>
+
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <div id="container">
+
+        <video
+            id="input_video"
+            playsinline
+            autoplay
+            muted>
+        </video>
+
+        <canvas id="output_canvas"></canvas>
+
+
+        <!-- MÉTRICAS IZQUIERDA -->
+        <div id="data-left" class="panel">
+
+            <div style="
+                color: var(--cyan);
+                font-size: 11px;
+                margin-bottom: 20px;
+                font-weight: 900;
+                border-bottom: 1px solid #333;
+                padding-bottom: 5px;
+            ">
+                MÉTRICAS IA
+            </div>
+
+            <span class="label">
+                Inclinación Cabeza
+            </span>
+
+            <span id="txt-h" class="val">
+                0°
+            </span>
+
+            <div class="meter-bg">
+                <div class="tilt-center-line"></div>
+                <div id="head-indicator"></div>
+            </div>
+
+
+            <span class="label">
+                Tensión Lado Violín
+            </span>
+
+            <div class="bar-bg">
+                <div id="bar-violin" class="bar-fill"></div>
+            </div>
+
+
+            <span class="label">
+                Altura Violín
+            </span>
+
+            <span id="txt-v" class="val">
+                Ok
+            </span>
+
+        </div>
+
+
+        <!-- MÉTRICAS DERECHA -->
+        <div id="data-right" class="panel">
+
+            <div style="
+                color: var(--cyan);
+                font-size: 11px;
+                margin-bottom: 20px;
+                font-weight: 900;
+                border-bottom: 1px solid #333;
+                padding-bottom: 5px;
+            ">
+                TÉCNICA DE ARCO
+            </div>
+
+
+            <span class="label">
+                Ángulo Codo
+            </span>
+
+            <span id="txt-elbow" class="val">
+                0°
+            </span>
+
+            <div class="meter-bg">
+                <div id="fill-elbow" class="meter-fill"></div>
+            </div>
+
+
+            <span class="label">
+                Cuerda Estimada
+            </span>
+
+            <span
+                id="txt-string"
+                class="val"
+                style="color:var(--cyan)">
+                --
+            </span>
+
+
+            <span class="label">
+                Tensión Lado Arco
+            </span>
+
+            <div class="bar-bg">
+                <div id="bar-arco" class="bar-fill"></div>
+            </div>
+
+        </div>
+
+
+        <!-- MENSAJE -->
+        <div id="instruction-box" class="panel">
+
+            <div
+                id="main-advice"
+                style="
+                    font-size: 20px;
+                    color: var(--cyan);
+                    font-weight: bold;
+                ">
+                ...
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        /* =========================================================
+           ELEMENTOS
+        ========================================================= */
+
+        const video = document.getElementById('input_video');
+        const canvas = document.getElementById('output_canvas');
+        const ctx = canvas.getContext('2d');
+
+        const startButton = document.getElementById('btn-start');
+        const errorBox = document.getElementById('camera-error');
+
+
+        /* =========================================================
+           VARIABLES
+        ========================================================= */
+
+        let baseGap = 0.45;
+
+        let isCalibrating = false;
+        let isCalibrated = false;
+
+        let lastSpeak = 0;
+        let lastMsg = "";
+
+        let samples = [];
+
+        let cameraStarted = false;
+
+
+        /* =========================================================
+           VOZ
+        ========================================================= */
+
+        function speak(t) {
+
+            if (Date.now() - lastSpeak < 4500) {
+                return;
+            }
+
+            if (
+                t === lastMsg &&
+                t === "Cuerpo alineado ✓"
+            ) {
+                return;
+            }
+
+            try {
+
+                window.speechSynthesis.cancel();
+
+                const u =
+                    new SpeechSynthesisUtterance(t);
+
+                u.lang = 'es-ES';
+                u.rate = 1.0;
+
+                window.speechSynthesis.speak(u);
+
+                lastSpeak = Date.now();
+                lastMsg = t;
+
+            } catch (e) {
+
+                console.warn(
+                    "Speech synthesis error:",
+                    e
+                );
+
+            }
+        }
+
+
+        /* =========================================================
+           INICIAR SISTEMA
+           
+           IMPORTANTE:
+           NO usamos getUserMedia() aquí.
+           MediaPipe Camera gestiona la cámara.
+        ========================================================= */
+
+        async function initSystem() {
+
+            if (cameraStarted) {
+                return;
+            }
+
+            startButton.disabled = true;
+            startButton.innerText = "INICIANDO CÁMARA...";
+
+            errorBox.style.display = "none";
+            errorBox.innerText = "";
+
+            try {
+
+                /*
+                 * El usuario ha pulsado el botón, por lo que
+                 * estamos dentro de una interacción del usuario.
+                 * Esto también ayuda con permisos y audio.
+                 */
+
+                isCalibrating = true;
+                isCalibrated = false;
+
+                samples = [];
+
+                /*
+                 * MediaPipe Camera es quien solicita la cámara.
+                 *
+                 * NO hacemos:
+                 *
+                 * navigator.mediaDevices.getUserMedia()
+                 *
+                 * porque Camera.start() ya lo hace.
+                 */
+
+                camera.start();
+
+                cameraStarted = true;
+
+                speak(
+                    "Pega los codos al cuerpo y mantente erguido."
+                );
+
+                /*
+                 * Dejamos 4,5 segundos para obtener
+                 * suficientes muestras de calibración.
+                 */
+
+                setTimeout(() => {
+
+                    if (samples.length > 0) {
+
+                        baseGap =
+                            samples.reduce(
+                                (a, b) => a + b,
+                                0
+                            ) / samples.length;
+
+                    }
+
+                    isCalibrating = false;
+                    isCalibrated = true;
+
+                    document
+                        .getElementById(
+                            'calibration-overlay'
+                        )
+                        .style.display = 'none';
+
+                    speak("Listo.");
+
+                }, 4500);
+
+
+            } catch (e) {
+
+                console.error(
+                    "Camera initialization error:",
+                    e
+                );
+
+                cameraStarted = false;
+                isCalibrating = false;
+
+                startButton.disabled = false;
+                startButton.innerText =
+                    "ACTIVAR CÁMARA";
+
+                errorBox.style.display = "block";
+
+                errorBox.innerHTML =
+                    "<strong>No se pudo iniciar la cámara.</strong><br><br>" +
+                    "Error: " +
+                    (e.name || "UnknownError") +
+                    "<br>" +
+                    (e.message || "Sin información adicional.") +
+                    "<br><br>" +
+                    "Comprueba que el navegador tenga permiso para usar la cámara y que ninguna otra aplicación la esté utilizando.";
+
+            }
+
+        }
+
+
+        /* =========================================================
+           RESULTADOS DE MEDIAPIPE
+        ========================================================= */
+
+        function onResults(res) {
+
+            /*
+             * No hacemos nada hasta que MediaPipe
+             * haya detectado el cuerpo.
+             */
+
+            if (
+                !res.poseLandmarks ||
+                (!isCalibrated && !isCalibrating)
+            ) {
+                return;
+            }
+
+
+            /* =====================================================
+               DIMENSIONES DEL CANVAS
+            ===================================================== */
+
+            const vW = window.innerWidth;
+            const vH = window.innerHeight;
+
+            canvas.width = vW;
+            canvas.height = vH;
+
+
+            const imageWidth =
+                res.image.width || 640;
+
+            const imageHeight =
+                res.image.height || 480;
+
+
+            const scale =
+                Math.min(
+                    vW / imageWidth,
+                    vH / imageHeight
+                );
+
+
+            const dW =
+                imageWidth * scale;
+
+            const dH =
+                imageHeight * scale;
+
+
+            const oX =
+                (vW - dW) / 2;
+
+            const oY =
+                (vH - dH) / 2;
+
+
+            /* =====================================================
+               DIBUJAR IMAGEN
+            ===================================================== */
+
+            ctx.save();
+
+            ctx.clearRect(
+                0,
+                0,
+                vW,
+                vH
+            );
+
+
+            /*
+             * Espejo horizontal.
+             */
+
+            ctx.translate(vW, 0);
+            ctx.scale(-1, 1);
+
+
+            ctx.drawImage(
+                res.image,
+                (vW - dW) / 2,
+                oY,
+                dW,
+                dH
+            );
+
+
+            /* =====================================================
+               LANDMARKS
+            ===================================================== */
+
+            const p =
+                res.poseLandmarks;
+
+
+            const sV = p[11];
+            const sA = p[12];
+
+            const eV = p[13];
+            const eA = p[14];
+
+            const wV = p[15];
+            const wA = p[16];
+
+            const hA = p[24];
+
+
+            /* =====================================================
+               1. INCLINACIÓN DE CABEZA
+            ===================================================== */
+
+            const tiltH =
+                Math.atan2(
+                    p[8].y - p[7].y,
+                    Math.abs(
+                        p[8].x - p[7].x
+                    )
+                ) *
+                (180 / Math.PI);
+
+
+            document.getElementById(
+                'txt-h'
+            ).innerText =
+                Math.abs(
+                    Math.round(tiltH)
+                ) + "°";
+
+
+            const hInd =
+                document.getElementById(
+                    'head-indicator'
+                );
+
+
+            hInd.style.background =
+                Math.abs(tiltH) > 8
+                    ? "var(--red)"
+                    : "var(--green)";
+
+
+            /*
+             * Evitamos que el indicador salga
+             * completamente del medidor.
+             */
+
+            const headPosition =
+                Math.max(
+                    5,
+                    Math.min(
+                        95,
+                        50 + (tiltH * 4)
+                    )
+                );
+
+
+            hInd.style.left =
+                headPosition + "%";
+
+
+            /* =====================================================
+               2. ÁNGULO DEL CODO
+            ===================================================== */
+
+            const angleShoulderArm =
+                Math.atan2(
+                    eA.y - sA.y,
+                    eA.x - sA.x
+                );
+
+
+            const angleShoulderHip =
+                Math.atan2(
+                    hA.y - sA.y,
+                    hA.x - sA.x
+                );
+
+
+            let angE =
+                Math.abs(
+                    angleShoulderArm -
+                    angleShoulderHip
+                ) *
+                (180 / Math.PI);
+
+
+            /*
+             * Normalizamos el ángulo para evitar
+             * valores superiores a 180°.
+             */
+
+            if (angE > 180) {
+                angE = 360 - angE;
+            }
+
+
+            document.getElementById(
+                'txt-elbow'
+            ).innerText =
+                Math.round(angE) + "°";
+
+
+            document.getElementById(
+                'fill-elbow'
+            ).style.width =
+                Math.min(
+                    100,
+                    (angE / 90) * 100
+                ) + "%";
+
+
+            /* =====================================================
+               3. CUERDA ESTIMADA
+            ===================================================== */
+
+            let str;
+
+            if (angE < 25) {
+                str = "MI (E)";
+            }
+            else if (angE < 45) {
+                str = "LA (A)";
+            }
+            else if (angE < 65) {
+                str = "RE (D)";
+            }
+            else {
+                str = "SOL (G)";
+            }
+
+
+            document.getElementById(
+                'txt-string'
+            ).innerText = str;
+
+
+            /* =====================================================
+               4. TENSIÓN
+            ===================================================== */
+
+            const shoulderDistance =
+                Math.abs(
+                    sA.x - sV.x
+                );
+
+
+            /*
+             * Evitamos división por cero.
+             */
+
+            const safeDistance =
+                Math.max(
+                    shoulderDistance,
+                    0.001
+                );
+
+
+            const gV =
+                (sV.y - p[7].y) /
+                safeDistance;
+
+
+            const gA =
+                (sA.y - p[8].y) /
+                safeDistance;
+
+
+            if (isCalibrating) {
+
+                const currentGap =
+                    (gV + gA) / 2;
+
+                /*
+                 * Solo aceptamos valores razonables.
+                 */
+
+                if (
+                    Number.isFinite(
+                        currentGap
+                    )
+                ) {
+                    samples.push(
+                        currentGap
+                    );
+                }
+            }
+
+
+            /*
+             * Tensión lado violín.
+             */
+
+            const tV =
+                Math.min(
+                    100,
+                    Math.max(
+                        0,
+                        (
+                            (baseGap - gV) /
+                            (baseGap * 0.3)
+                        ) * 100
+                    )
+                );
+
+
+            /*
+             * Tensión lado arco.
+             */
+
+            const tA =
+                Math.min(
+                    100,
+                    Math.max(
+                        0,
+                        (
+                            (baseGap - gA) /
+                            (baseGap * 0.3)
+                        ) * 100
+                    )
+                );
+
+
+            document.getElementById(
+                'bar-arco'
+            ).style.width =
+                tA + "%";
+
+
+            document.getElementById(
+                'bar-violin'
+            ).style.width =
+                tV + "%";
+
+
+            document.getElementById(
+                'bar-arco'
+            ).style.background =
+                tA > 45
+                    ? "var(--red)"
+                    : "var(--green)";
+
+
+            document.getElementById(
+                'bar-violin'
+            ).style.background =
+                tV > 45
+                    ? "var(--red)"
+                    : "var(--green)";
+
+
+            /* =====================================================
+               5. ALTURA DEL VIOLÍN
+            ===================================================== */
+
+            const yM =
+                (p[9].y + p[10].y) / 2;
+
+
+            const yS =
+                (sV.y + sA.y) / 2;
+
+
+            let vAdv = "Ok";
+
+
+            if (wV.y < yM - 0.02) {
+
+                vAdv = "Alto";
+
+            }
+            else if (
+                wV.y > yS + 0.02
+            ) {
+
+                vAdv = "Bajo";
+
+            }
+
+
+            document.getElementById(
+                'txt-v'
+            ).innerText = vAdv;
+
+
+            document.getElementById(
+                'txt-v'
+            ).style.color =
+                vAdv === "Ok"
+                    ? "var(--green)"
+                    : "var(--red)";
+
+
+            /* =====================================================
+               6. MENSAJE PRINCIPAL
+            ===================================================== */
+
+            if (isCalibrated) {
+
+                let m =
+                    "Cuerpo alineado ✓";
+
+
+                if (tA > 45) {
+
+                    m =
+                        "Baja el hombro del arco";
+
+                }
+                else if (tV > 45) {
+
+                    m =
+                        "Baja el hombro del violín";
+
+                }
+                else if (
+                    Math.abs(tiltH) > 8
+                ) {
+
+                    m =
+                        "Endereza la cabeza";
+
+                }
+                else if (
+                    vAdv !== "Ok"
+                ) {
+
+                    m =
+                        vAdv === "Alto"
+                            ? "Baja el violín"
+                            : "Sube el violín";
+
+                }
+
+
+                document.getElementById(
+                    'main-advice'
+                ).innerText = m;
+
+
+                speak(m);
+
+            }
+
+
+            /* =====================================================
+               7. DIBUJO DEL ESQUELETO
+            ===================================================== */
+
+            function d(
+                pts,
+                conn,
+                col,
+                drawDots = false
+            ) {
+
+                if (!pts) {
+                    return;
+                }
+
+
+                for (const c of conn) {
+
+                    const f =
+                        pts[c[0]];
+
+                    const t =
+                        pts[c[1]];
+
+
+                    if (!f || !t) {
+                        continue;
+                    }
+
+
+                    ctx.beginPath();
+
+                    ctx.moveTo(
+                        oX + (f.x * dW),
+                        oY + (f.y * dH)
+                    );
+
+                    ctx.lineTo(
+                        oX + (t.x * dW),
+                        oY + (t.y * dH)
+                    );
+
+                    ctx.strokeStyle = col;
+                    ctx.lineWidth = 4;
+
+                    ctx.stroke();
+
+                }
+
+
+                if (drawDots) {
+
+                    for (const pt of pts) {
+
+                        if (!pt) {
+                            continue;
+                        }
+
+
+                        ctx.beginPath();
+
+                        ctx.arc(
+                            oX + (pt.x * dW),
+                            oY + (pt.y * dH),
+                            2,
+                            0,
+                            2 * Math.PI
+                        );
+
+                        ctx.fillStyle = "white";
+
+                        ctx.fill();
+
+                    }
+
+                }
+
+            }
+
+
+            /* =====================================================
+               DIBUJAR POSE
+            ===================================================== */
+
+            d(
+                p,
+                POSE_CONNECTIONS,
+                '#00FFFF'
+            );
+
+
+            if (res.leftHandLandmarks) {
+
+                d(
+                    res.leftHandLandmarks,
+                    HAND_CONNECTIONS,
+                    '#FF00FF',
+                    true
+                );
+
+            }
+
+
+            if (res.rightHandLandmarks) {
+
+                d(
+                    res.rightHandLandmarks,
+                    HAND_CONNECTIONS,
+                    '#FFCC00',
+                    true
+                );
+
+            }
+
+
+            ctx.restore();
+
+        }
+
+
+        /* =========================================================
+           MEDIAPIPE HOLISTIC
+        ========================================================= */
+
+        const holistic =
+            new Holistic({
+
+                locateFile: (file) => {
+
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
+
+                }
+
+            });
+
+
+        holistic.setOptions({
+
+            modelComplexity: 1,
+
+            smoothLandmarks: true,
+
+            minDetectionConfidence: 0.5,
+
+            minTrackingConfidence: 0.5,
+
+            refineFaceLandmarks: false
+
+        });
+
+
+        holistic.onResults(
+            onResults
+        );
+
+
+        /* =========================================================
+           CÁMARA
+           
+           SOLO AQUÍ SE GESTIONA LA CÁMARA.
+           
+           No utilizamos getUserMedia() manualmente.
+        ========================================================= */
+
+        const camera =
+            new Camera(
+                video,
+                {
+
+                    onFrame: async () => {
+
+                        await holistic.send({
+                            image: video
+                        });
+
+                    },
+
+                    width: 640,
+
+                    height: 480
+
+                }
+            );
+
+
+        /* =========================================================
+           REDIMENSIONAMIENTO
+        ========================================================= */
+
+        window.addEventListener(
+            'resize',
+            () => {
+
+                if (
+                    canvas.width !==
+                    window.innerWidth ||
+                    canvas.height !==
+                    window.innerHeight
+                ) {
+
+                    canvas.width =
+                        window.innerWidth;
+
+                    canvas.height =
+                        window.innerHeight;
+
+                }
+
+            }
+        );
+
+    </script>
+
+</body>
+</html>
