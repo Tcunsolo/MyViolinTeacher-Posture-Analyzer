@@ -3,7 +3,7 @@
 <head> 
 <meta charset="UTF-8"> 
 <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-<title>Violin Teacher - Bio-Web Full Tracking v26</title>
+<title>Violin Teacher - Bio-Web Pro v30</title>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -45,37 +45,29 @@
     <video id="input_video" playsinline></video> 
     <canvas id="output_canvas"></canvas>
 
-    <!-- IZQUIERDA: CUERPO Y VIOLÍN -->
     <div id="data-left" class="panel">
         <div style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">MÉTRICAS IA</div>
         <span class="label">Inclinación Cabeza</span>
         <span id="txt-h" class="val">0°</span>
         <div class="meter-bg"><div class="tilt-center-line"></div><div id="head-indicator"></div></div>
-        
         <span class="label">Tensión Lado Violín</span>
         <div class="bar-bg"><div id="bar-violin" class="bar-fill"></div></div>
-        
         <span class="label">Altura Violín</span>
         <span id="txt-v" class="val">Ok</span>
     </div>
 
-    <!-- DERECHA: BRAZO DERECHO (ARCO) -->
     <div id="data-right" class="panel">
         <div style="color: var(--cyan); font-size: 11px; margin-bottom: 20px; font-weight: 900; border-bottom: 1px solid #333; padding-bottom: 5px;">TÉCNICA DE ARCO</div>
         <span class="label">Ángulo Codo</span>
         <span id="txt-elbow" class="val">0°</span>
         <div class="meter-bg"><div id="fill-elbow" class="meter-fill"></div></div>
-
         <span class="label">Cuerda Estimada</span>
         <span id="txt-string" class="val" style="color:var(--cyan)">--</span>
-
         <span class="label">Tensión Lado Arco</span>
         <div class="bar-bg"><div id="bar-arco" class="bar-fill"></div></div>
     </div>
 
-    <div id="instruction-box" class="panel">
-        <div id="main-advice" style="font-size: 20px; color: var(--cyan); font-weight: bold;">...</div>
-    </div>
+    <div id="instruction-box" class="panel"><div id="main-advice" style="font-size: 20px; color: var(--cyan); font-weight: bold;">...</div></div>
 </div>
 
 <script>
@@ -94,15 +86,15 @@ function speak(t) {
 
 async function initSystem() {
     try {
+        // SOLUCIÓN PARA MÓVILES: Restricciones más flexibles
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { 
                 facingMode: "user",
-                width: { ideal: 1280 }, 
-                height: { ideal: 720 } 
+                width: { ideal: 640 }, 
+                height: { ideal: 480 } 
             } 
         });
-        video.srcObject = stream; 
-        await video.play();
+        video.srcObject = stream; await video.play();
         document.getElementById('btn-start').style.display = 'none';
         speak("Pega los codos al cuerpo y mantente erguido.");
         isCalibrating = true;
@@ -114,14 +106,13 @@ async function initSystem() {
         }, 4500);
         camera.start();
     } catch (e) { 
-        alert("Error: " + e.name + " - " + e.message + "\nAsegúrese de usar HTTPS, permitir la cámara y cerrar otras apps que la usen."); 
+        alert("Error: Por favor, cierra otras apps que usen la cámara y asegúrate de usar Chrome/Safari."); 
     }
 }
 
 function onResults(res) {
     if (!res.poseLandmarks || (!isCalibrated && !isCalibrating)) return;
 
-    // --- ADAPTACIÓN DE PANTALLA ---
     const vW = window.innerWidth, vH = window.innerHeight;
     canvas.width = vW; canvas.height = vH;
     const scale = Math.min(vW / res.image.width, vH / res.image.height);
@@ -133,24 +124,21 @@ function onResults(res) {
     ctx.drawImage(res.image, (vW - dW) / 2, oY, dW, dH);
 
     const p = res.poseLandmarks;
-    // MAPEO: 11=Violín (Par), 12=Arco (Impar)
     const sV = p[11], sA = p[12], eV = p[13], eA = p[14], wV = p[15], wA = p[16], hA = p[24];
 
-    // 1. Cabeza (Inversión aplicada)
+    // 1. Cabeza (CORREGIDO: Inversión de resta aplicada)
     const tiltH = Math.atan2(p[8].y - p[7].y, Math.abs(p[8].x - p[7].x)) * (180/Math.PI);
     document.getElementById('txt-h').innerText = Math.abs(Math.round(tiltH)) + "°";
     const hInd = document.getElementById('head-indicator');
     hInd.style.background = Math.abs(tiltH) > 8 ? "var(--red)" : "var(--green)";
     hInd.style.left = (50 + (tiltH * 4)) + "%";
-    
-    // 2. Ángulo Codo Arco
+
     const angE = Math.abs(Math.atan2(eA.y - sA.y, eA.x - sA.x) - Math.atan2(hA.y - sA.y, hA.x - sA.x)) * (180/Math.PI);
     document.getElementById('txt-elbow').innerText = Math.round(angE) + "°";
     document.getElementById('fill-elbow').style.width = Math.min(100, (angE / 90) * 100) + "%";
     let str = angE < 25 ? "MI (E)" : angE < 45 ? "LA (A)" : angE < 65 ? "RE (D)" : "SOL (G)";
     document.getElementById('txt-string').innerText = str;
 
-    // 3. Tensiones
     const gV = (sV.y - p[7].y)/Math.abs(sA.x - sV.x), gA = (sA.y - p[8].y)/Math.abs(sA.x - sV.x);
     if (isCalibrating) samples.push((gV+gA)/2);
     const tV = Math.min(100, Math.max(0, ((baseGap - gV) / (baseGap * 0.3)) * 100));
@@ -160,7 +148,6 @@ function onResults(res) {
     document.getElementById('bar-arco').style.background = tA > 45 ? "var(--red)" : "var(--green)";
     document.getElementById('bar-violin').style.background = tV > 45 ? "var(--red)" : "var(--green)";
 
-    // 4. Altura Violín (Muñeca 15)
     const yM = (p[9].y + p[10].y) / 2, yS = (sV.y + sA.y) / 2;
     let vAdv = "Ok";
     if (wV.y < yM - 0.02) vAdv = "Alto"; else if (wV.y > yS + 0.02) vAdv = "Bajo";
@@ -177,35 +164,30 @@ function onResults(res) {
         speak(m);
     }
 
-    // --- DIBUJO ---
-    function d(pts, conn, col, drawPoints = false) {
+    // --- DIBUJO CON ARTICULACIONES Y COLORES ---
+    function d(pts, conn, col, drawDots = false) {
         if(!pts) return;
         for (const c of conn) {
             const f = pts[c[0]], t = pts[c[1]];
-            ctx.beginPath(); 
-            ctx.moveTo(oX + (f.x * dW), oY + (f.y * dH));
+            ctx.beginPath(); ctx.moveTo(oX + (f.x * dW), oY + (f.y * dH));
             ctx.lineTo(oX + (t.x * dW), oY + (t.y * dH));
             ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
         }
-        if(drawPoints) {
+        if(drawDots) {
             for (const pt of pts) {
-                ctx.beginPath();
-                ctx.arc(oX + (pt.x * dW), oY + (pt.y * dH), 2, 0, 2 * Math.PI);
-                ctx.fillStyle = "white";
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(oX + (pt.x * dW), oY + (pt.y * dH), 2, 0, 2 * Math.PI);
+                ctx.fillStyle = "white"; ctx.fill();
             }
         }
     }
-
-    d(p, POSE_CONNECTIONS, '#00FFFF'); // Cuerpo: Cian
-    if(res.leftHandLandmarks) d(res.leftHandLandmarks, HAND_CONNECTIONS, '#FF00FF', true); // Mano Violín: Magenta + Puntos
-    if(res.rightHandLandmarks) d(res.rightHandLandmarks, HAND_CONNECTIONS, '#FFCC00', true); // Mano Arco: Amarillo + Puntos
+    d(p, POSE_CONNECTIONS, '#00FFFF'); 
+    if(res.leftHandLandmarks) d(res.leftHandLandmarks, HAND_CONNECTIONS, '#FF00FF', true); 
+    if(res.rightHandLandmarks) d(res.rightHandLandmarks, HAND_CONNECTIONS, '#FFCC00', true); 
+    ctx.restore();
 }
 
 const holistic = new Holistic({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${f}`});
 holistic.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5 });
 holistic.onResults(onResults);
 const camera = new Camera(video, { onFrame: async () => { await holistic.send({image: video}); } });
-</script> 
-</body> 
-</html>
+</script> </body> </html>
