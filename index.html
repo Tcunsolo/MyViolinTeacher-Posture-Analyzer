@@ -1017,12 +1017,6 @@
                     const tIndex = c[1];
 
 
-                    /*
-                     * Ocultar una conexión concreta,
-                     * independientemente de que los puntos
-                     * sigan siendo visibles.
-                     */
-
                     const connectionHidden =
                         hiddenConnections.some(
                             pair =>
@@ -1041,11 +1035,6 @@
                         continue;
                     }
 
-
-                    /*
-                     * Ocultar conexiones relacionadas
-                     * con landmarks completamente ocultos.
-                     */
 
                     if (
                         hiddenPoints.includes(fIndex) ||
@@ -1149,24 +1138,23 @@
             /* =====================================================
                8. ESQUELETO CORPORAL
                
-               Ocultamos visualmente:
-               
-               0-10 → cara
+               Se ocultan visualmente:
+
+               0-10  → cara
                17-22 → puntos de manos del pose
-               
-               NO ocultamos 23 y 24 porque necesitamos:
-               
+
+               Se mantienen 23 y 24 para conservar:
+
                23 ───────── 24
                │              │
                │              │
                piernas
                
-               Solo eliminamos las conexiones:
+               Se eliminan únicamente las conexiones laterales
+               del tronco:
                
                11 → 23
                12 → 24
-               
-               para que no aparezcan los laterales del tronco.
             ===================================================== */
 
             d(
@@ -1310,243 +1298,13 @@
             }
 
 
-            /* =====================================================
-               11. CARA
-               
-               OJOS + SONRISA
-            ===================================================== */
-
-            if (res.faceLandmarks) {
-
-                const face =
-                    res.faceLandmarks;
-
-
-                /* =================================================
-                   OJOS
-                ================================================= */
-
-                const leftEye =
-                    face[159];
-
-                const rightEye =
-                    face[386];
-
-
-                if (
-                    leftEye &&
-                    rightEye
-                ) {
-
-                    const leftEyeX =
-                        oX +
-                        (leftEye.x * dW);
-
-                    const leftEyeY =
-                        oY +
-                        (leftEye.y * dH);
-
-
-                    const rightEyeX =
-                        oX +
-                        (rightEye.x * dW);
-
-                    const rightEyeY =
-                        oY +
-                        (rightEye.y * dH);
-
-
-                    const eyeSize =
-                        Math.max(
-                            4,
-                            Math.min(
-                                7,
-                                Math.abs(
-                                    rightEyeX -
-                                    leftEyeX
-                                ) * 0.035
-                            )
-                        );
-
-
-                    /* OJO IZQUIERDO */
-
-                    ctx.beginPath();
-
-                    ctx.arc(
-                        leftEyeX,
-                        leftEyeY,
-                        eyeSize,
-                        0,
-                        2 * Math.PI
-                    );
-
-                    ctx.fillStyle =
-                        '#FFFFFF';
-
-                    ctx.fill();
-
-
-                    /* PUPILA IZQUIERDA */
-
-                    ctx.beginPath();
-
-                    ctx.arc(
-                        leftEyeX,
-                        leftEyeY,
-                        eyeSize * 0.42,
-                        0,
-                        2 * Math.PI
-                    );
-
-                    ctx.fillStyle =
-                        '#050508';
-
-                    ctx.fill();
-
-
-                    /* OJO DERECHO */
-
-                    ctx.beginPath();
-
-                    ctx.arc(
-                        rightEyeX,
-                        rightEyeY,
-                        eyeSize,
-                        0,
-                        2 * Math.PI
-                    );
-
-                    ctx.fillStyle =
-                        '#FFFFFF';
-
-                    ctx.fill();
-
-
-                    /* PUPILA DERECHA */
-
-                    ctx.beginPath();
-
-                    ctx.arc(
-                        rightEyeX,
-                        rightEyeY,
-                        eyeSize * 0.42,
-                        0,
-                        2 * Math.PI
-                    );
-
-                    ctx.fillStyle =
-                        '#050508';
-
-                    ctx.fill();
-
-                }
-
-
-                /* =================================================
-                   SONRISA
-                ================================================= */
-
-                const leftCorner =
-                    face[61];
-
-                const rightCorner =
-                    face[291];
-
-                const lowerLip =
-                    face[17];
-
-
-                if (
-                    leftCorner &&
-                    rightCorner &&
-                    lowerLip
-                ) {
-
-                    const leftX =
-                        oX +
-                        (leftCorner.x * dW);
-
-                    const leftY =
-                        oY +
-                        (leftCorner.y * dH);
-
-
-                    const rightX =
-                        oX +
-                        (rightCorner.x * dW);
-
-                    const rightY =
-                        oY +
-                        (rightCorner.y * dH);
-
-
-                    const centerX =
-                        (
-                            leftX +
-                            rightX
-                        ) / 2;
-
-
-                    const mouthWidth =
-                        Math.abs(
-                            rightX -
-                            leftX
-                        );
-
-
-                    const smileDepth =
-                        Math.min(
-                            9,
-                            Math.max(
-                                4,
-                                mouthWidth * 0.07
-                            )
-                        );
-
-
-                    const centerY =
-                        (
-                            leftY +
-                            rightY
-                        ) / 2 +
-                        smileDepth;
-
-
-                    ctx.beginPath();
-
-
-                    ctx.moveTo(
-                        leftX,
-                        leftY
-                    );
-
-
-                    ctx.quadraticCurveTo(
-                        centerX,
-                        centerY,
-                        rightX,
-                        rightY
-                    );
-
-
-                    ctx.strokeStyle =
-                        '#FFFFFF';
-
-                    ctx.lineWidth =
-                        2;
-
-                    ctx.lineCap =
-                        'round';
-
-                    ctx.lineJoin =
-                        'round';
-
-                    ctx.stroke();
-
-                }
-
-            }
+            /*
+             * NO SE DIBUJA NINGUNA CARA.
+             *
+             * Los landmarks faciales siguen siendo procesados
+             * por MediaPipe, pero no se representa ningún
+             * ojo, boca, sonrisa ni emoji sobre la imagen.
+             */
 
 
             ctx.restore();
