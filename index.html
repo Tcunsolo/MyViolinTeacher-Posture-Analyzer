@@ -480,6 +480,7 @@
             }
 
             startButton.disabled = true;
+
             startButton.innerText =
                 "INICIANDO CÁMARA...";
 
@@ -492,11 +493,6 @@
                 isCalibrated = false;
 
                 samples = [];
-
-                /*
-                 * MediaPipe Camera gestiona la cámara.
-                 * No usamos getUserMedia() manualmente.
-                 */
 
                 camera.start();
 
@@ -544,6 +540,7 @@
                 isCalibrating = false;
 
                 startButton.disabled = false;
+
                 startButton.innerText =
                     "ACTIVAR CÁMARA";
 
@@ -634,10 +631,6 @@
                 vH
             );
 
-
-            /*
-             * Espejo horizontal.
-             */
 
             ctx.translate(vW, 0);
             ctx.scale(-1, 1);
@@ -997,10 +990,7 @@
 
 
             /* =====================================================
-               7. DIBUJO DEL ESQUELETO
-               
-               Los landmarks 17-22 se mantienen en MediaPipe
-               pero NO se dibujan visualmente.
+               7. FUNCIÓN DE DIBUJO
             ===================================================== */
 
             function d(
@@ -1008,7 +998,8 @@
                 conn,
                 col,
                 drawDots = false,
-                hiddenPoints = []
+                hiddenPoints = [],
+                hiddenConnections = []
             ) {
 
                 if (!pts) {
@@ -1027,8 +1018,33 @@
 
 
                     /*
-                     * Si una conexión utiliza alguno de los
-                     * landmarks ocultos, no la dibujamos.
+                     * Ocultar una conexión concreta,
+                     * independientemente de que los puntos
+                     * sigan siendo visibles.
+                     */
+
+                    const connectionHidden =
+                        hiddenConnections.some(
+                            pair =>
+                                (
+                                    pair[0] === fIndex &&
+                                    pair[1] === tIndex
+                                ) ||
+                                (
+                                    pair[0] === tIndex &&
+                                    pair[1] === fIndex
+                                )
+                        );
+
+
+                    if (connectionHidden) {
+                        continue;
+                    }
+
+
+                    /*
+                     * Ocultar conexiones relacionadas
+                     * con landmarks completamente ocultos.
                      */
 
                     if (
@@ -1066,8 +1082,11 @@
                     );
 
 
-                    ctx.strokeStyle = col;
-                    ctx.lineWidth = 4;
+                    ctx.strokeStyle =
+                        col;
+
+                    ctx.lineWidth =
+                        4;
 
                     ctx.stroke();
 
@@ -1094,10 +1113,6 @@
                             continue;
                         }
 
-
-                        /*
-                         * No dibujar los landmarks ocultos.
-                         */
 
                         if (
                             hiddenPoints.includes(i)
@@ -1132,15 +1147,26 @@
 
 
             /* =====================================================
-               DIBUJAR POSE CORPORAL
+               8. ESQUELETO CORPORAL
                
-               OCULTAMOS:
-               17 = meñique izquierdo
-               18 = meñique derecho
-               19 = índice izquierdo
-               20 = índice derecho
-               21 = pulgar izquierdo
-               22 = pulgar derecho
+               Ocultamos visualmente:
+               
+               0-10 → cara
+               17-22 → puntos de manos del pose
+               
+               NO ocultamos 23 y 24 porque necesitamos:
+               
+               23 ───────── 24
+               │              │
+               │              │
+               piernas
+               
+               Solo eliminamos las conexiones:
+               
+               11 → 23
+               12 → 24
+               
+               para que no aparezcan los laterales del tronco.
             ===================================================== */
 
             d(
@@ -1149,20 +1175,115 @@
                 '#00FFFF',
                 false,
                 [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    10,
                     17,
                     18,
                     19,
                     20,
                     21,
                     22
+                ],
+                [
+                    [11, 23],
+                    [12, 24]
                 ]
             );
 
 
             /* =====================================================
-               MANOS
+               9. LÍNEA CENTRAL DEL TRONCO
                
-               Se mantienen exactamente igual.
+               Centro de hombros
+                       │
+                       │
+                       │
+               Centro de caderas
+            ===================================================== */
+
+            const shoulderCenterX =
+                (
+                    sV.x +
+                    sA.x
+                ) / 2;
+
+
+            const shoulderCenterY =
+                (
+                    sV.y +
+                    sA.y
+                ) / 2;
+
+
+            const hipLeft =
+                p[23];
+
+            const hipRight =
+                p[24];
+
+
+            if (
+                hipLeft &&
+                hipRight
+            ) {
+
+                const hipCenterX =
+                    (
+                        hipLeft.x +
+                        hipRight.x
+                    ) / 2;
+
+
+                const hipCenterY =
+                    (
+                        hipLeft.y +
+                        hipRight.y
+                    ) / 2;
+
+
+                ctx.beginPath();
+
+
+                ctx.moveTo(
+                    oX +
+                    (shoulderCenterX * dW),
+
+                    oY +
+                    (shoulderCenterY * dH)
+                );
+
+
+                ctx.lineTo(
+                    oX +
+                    (hipCenterX * dW),
+
+                    oY +
+                    (hipCenterY * dH)
+                );
+
+
+                ctx.strokeStyle =
+                    '#00FFFF';
+
+                ctx.lineWidth =
+                    4;
+
+                ctx.stroke();
+
+            }
+
+
+            /* =====================================================
+               10. MANOS
             ===================================================== */
 
             if (res.leftHandLandmarks) {
@@ -1185,6 +1306,245 @@
                     '#FFCC00',
                     true
                 );
+
+            }
+
+
+            /* =====================================================
+               11. CARA
+               
+               OJOS + SONRISA
+            ===================================================== */
+
+            if (res.faceLandmarks) {
+
+                const face =
+                    res.faceLandmarks;
+
+
+                /* =================================================
+                   OJOS
+                ================================================= */
+
+                const leftEye =
+                    face[159];
+
+                const rightEye =
+                    face[386];
+
+
+                if (
+                    leftEye &&
+                    rightEye
+                ) {
+
+                    const leftEyeX =
+                        oX +
+                        (leftEye.x * dW);
+
+                    const leftEyeY =
+                        oY +
+                        (leftEye.y * dH);
+
+
+                    const rightEyeX =
+                        oX +
+                        (rightEye.x * dW);
+
+                    const rightEyeY =
+                        oY +
+                        (rightEye.y * dH);
+
+
+                    const eyeSize =
+                        Math.max(
+                            4,
+                            Math.min(
+                                7,
+                                Math.abs(
+                                    rightEyeX -
+                                    leftEyeX
+                                ) * 0.035
+                            )
+                        );
+
+
+                    /* OJO IZQUIERDO */
+
+                    ctx.beginPath();
+
+                    ctx.arc(
+                        leftEyeX,
+                        leftEyeY,
+                        eyeSize,
+                        0,
+                        2 * Math.PI
+                    );
+
+                    ctx.fillStyle =
+                        '#FFFFFF';
+
+                    ctx.fill();
+
+
+                    /* PUPILA IZQUIERDA */
+
+                    ctx.beginPath();
+
+                    ctx.arc(
+                        leftEyeX,
+                        leftEyeY,
+                        eyeSize * 0.42,
+                        0,
+                        2 * Math.PI
+                    );
+
+                    ctx.fillStyle =
+                        '#050508';
+
+                    ctx.fill();
+
+
+                    /* OJO DERECHO */
+
+                    ctx.beginPath();
+
+                    ctx.arc(
+                        rightEyeX,
+                        rightEyeY,
+                        eyeSize,
+                        0,
+                        2 * Math.PI
+                    );
+
+                    ctx.fillStyle =
+                        '#FFFFFF';
+
+                    ctx.fill();
+
+
+                    /* PUPILA DERECHA */
+
+                    ctx.beginPath();
+
+                    ctx.arc(
+                        rightEyeX,
+                        rightEyeY,
+                        eyeSize * 0.42,
+                        0,
+                        2 * Math.PI
+                    );
+
+                    ctx.fillStyle =
+                        '#050508';
+
+                    ctx.fill();
+
+                }
+
+
+                /* =================================================
+                   SONRISA
+                ================================================= */
+
+                const leftCorner =
+                    face[61];
+
+                const rightCorner =
+                    face[291];
+
+                const lowerLip =
+                    face[17];
+
+
+                if (
+                    leftCorner &&
+                    rightCorner &&
+                    lowerLip
+                ) {
+
+                    const leftX =
+                        oX +
+                        (leftCorner.x * dW);
+
+                    const leftY =
+                        oY +
+                        (leftCorner.y * dH);
+
+
+                    const rightX =
+                        oX +
+                        (rightCorner.x * dW);
+
+                    const rightY =
+                        oY +
+                        (rightCorner.y * dH);
+
+
+                    const centerX =
+                        (
+                            leftX +
+                            rightX
+                        ) / 2;
+
+
+                    const mouthWidth =
+                        Math.abs(
+                            rightX -
+                            leftX
+                        );
+
+
+                    const smileDepth =
+                        Math.min(
+                            9,
+                            Math.max(
+                                4,
+                                mouthWidth * 0.07
+                            )
+                        );
+
+
+                    const centerY =
+                        (
+                            leftY +
+                            rightY
+                        ) / 2 +
+                        smileDepth;
+
+
+                    ctx.beginPath();
+
+
+                    ctx.moveTo(
+                        leftX,
+                        leftY
+                    );
+
+
+                    ctx.quadraticCurveTo(
+                        centerX,
+                        centerY,
+                        rightX,
+                        rightY
+                    );
+
+
+                    ctx.strokeStyle =
+                        '#FFFFFF';
+
+                    ctx.lineWidth =
+                        2;
+
+                    ctx.lineCap =
+                        'round';
+
+                    ctx.lineJoin =
+                        'round';
+
+                    ctx.stroke();
+
+                }
 
             }
 
