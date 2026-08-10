@@ -198,6 +198,7 @@
         }
 
         @media (max-width: 700px) {
+
             #data-left,
             #data-right {
                 width: 150px;
@@ -392,12 +393,20 @@
            ELEMENTOS
         ========================================================= */
 
-        const video = document.getElementById('input_video');
-        const canvas = document.getElementById('output_canvas');
-        const ctx = canvas.getContext('2d');
+        const video =
+            document.getElementById('input_video');
 
-        const startButton = document.getElementById('btn-start');
-        const errorBox = document.getElementById('camera-error');
+        const canvas =
+            document.getElementById('output_canvas');
+
+        const ctx =
+            canvas.getContext('2d');
+
+        const startButton =
+            document.getElementById('btn-start');
+
+        const errorBox =
+            document.getElementById('camera-error');
 
 
         /* =========================================================
@@ -462,10 +471,6 @@
 
         /* =========================================================
            INICIAR SISTEMA
-           
-           IMPORTANTE:
-           NO usamos getUserMedia() aquí.
-           MediaPipe Camera gestiona la cámara.
         ========================================================= */
 
         async function initSystem() {
@@ -475,18 +480,13 @@
             }
 
             startButton.disabled = true;
-            startButton.innerText = "INICIANDO CÁMARA...";
+            startButton.innerText =
+                "INICIANDO CÁMARA...";
 
             errorBox.style.display = "none";
             errorBox.innerText = "";
 
             try {
-
-                /*
-                 * El usuario ha pulsado el botón, por lo que
-                 * estamos dentro de una interacción del usuario.
-                 * Esto también ayuda con permisos y audio.
-                 */
 
                 isCalibrating = true;
                 isCalibrated = false;
@@ -494,13 +494,8 @@
                 samples = [];
 
                 /*
-                 * MediaPipe Camera es quien solicita la cámara.
-                 *
-                 * NO hacemos:
-                 *
-                 * navigator.mediaDevices.getUserMedia()
-                 *
-                 * porque Camera.start() ya lo hace.
+                 * MediaPipe Camera gestiona la cámara.
+                 * No usamos getUserMedia() manualmente.
                  */
 
                 camera.start();
@@ -511,10 +506,6 @@
                     "Pega los codos al cuerpo y mantente erguido."
                 );
 
-                /*
-                 * Dejamos 4,5 segundos para obtener
-                 * suficientes muestras de calibración.
-                 */
 
                 setTimeout(() => {
 
@@ -556,14 +547,16 @@
                 startButton.innerText =
                     "ACTIVAR CÁMARA";
 
-                errorBox.style.display = "block";
+                errorBox.style.display =
+                    "block";
 
                 errorBox.innerHTML =
                     "<strong>No se pudo iniciar la cámara.</strong><br><br>" +
                     "Error: " +
                     (e.name || "UnknownError") +
                     "<br>" +
-                    (e.message || "Sin información adicional.") +
+                    (e.message ||
+                        "Sin información adicional.") +
                     "<br><br>" +
                     "Comprueba que el navegador tenga permiso para usar la cámara y que ninguna otra aplicación la esté utilizando.";
 
@@ -578,11 +571,6 @@
 
         function onResults(res) {
 
-            /*
-             * No hacemos nada hasta que MediaPipe
-             * haya detectado el cuerpo.
-             */
-
             if (
                 !res.poseLandmarks ||
                 (!isCalibrated && !isCalibrating)
@@ -595,8 +583,11 @@
                DIMENSIONES DEL CANVAS
             ===================================================== */
 
-            const vW = window.innerWidth;
-            const vH = window.innerHeight;
+            const vW =
+                window.innerWidth;
+
+            const vH =
+                window.innerHeight;
 
             canvas.width = vW;
             canvas.height = vH;
@@ -715,11 +706,6 @@
                     : "var(--green)";
 
 
-            /*
-             * Evitamos que el indicador salga
-             * completamente del medidor.
-             */
-
             const headPosition =
                 Math.max(
                     5,
@@ -760,11 +746,6 @@
                 (180 / Math.PI);
 
 
-            /*
-             * Normalizamos el ángulo para evitar
-             * valores superiores a 180°.
-             */
-
             if (angE > 180) {
                 angE = 360 - angE;
             }
@@ -791,17 +772,26 @@
 
             let str;
 
+
             if (angE < 25) {
+
                 str = "MI (E)";
+
             }
             else if (angE < 45) {
+
                 str = "LA (A)";
+
             }
             else if (angE < 65) {
+
                 str = "RE (D)";
+
             }
             else {
+
                 str = "SOL (G)";
+
             }
 
 
@@ -819,10 +809,6 @@
                     sA.x - sV.x
                 );
 
-
-            /*
-             * Evitamos división por cero.
-             */
 
             const safeDistance =
                 Math.max(
@@ -846,25 +832,21 @@
                 const currentGap =
                     (gV + gA) / 2;
 
-                /*
-                 * Solo aceptamos valores razonables.
-                 */
 
                 if (
                     Number.isFinite(
                         currentGap
                     )
                 ) {
+
                     samples.push(
                         currentGap
                     );
+
                 }
+
             }
 
-
-            /*
-             * Tensión lado violín.
-             */
 
             const tV =
                 Math.min(
@@ -878,10 +860,6 @@
                     )
                 );
 
-
-            /*
-             * Tensión lado arco.
-             */
 
             const tA =
                 Math.min(
@@ -1020,13 +998,17 @@
 
             /* =====================================================
                7. DIBUJO DEL ESQUELETO
+               
+               Los landmarks 17-22 se mantienen en MediaPipe
+               pero NO se dibujan visualmente.
             ===================================================== */
 
             function d(
                 pts,
                 conn,
                 col,
-                drawDots = false
+                drawDots = false,
+                hiddenPoints = []
             ) {
 
                 if (!pts) {
@@ -1034,13 +1016,34 @@
                 }
 
 
+                /* ================================================
+                   CONEXIONES
+                ================================================= */
+
                 for (const c of conn) {
 
+                    const fIndex = c[0];
+                    const tIndex = c[1];
+
+
+                    /*
+                     * Si una conexión utiliza alguno de los
+                     * landmarks ocultos, no la dibujamos.
+                     */
+
+                    if (
+                        hiddenPoints.includes(fIndex) ||
+                        hiddenPoints.includes(tIndex)
+                    ) {
+                        continue;
+                    }
+
+
                     const f =
-                        pts[c[0]];
+                        pts[fIndex];
 
                     const t =
-                        pts[c[1]];
+                        pts[tIndex];
 
 
                     if (!f || !t) {
@@ -1050,15 +1053,18 @@
 
                     ctx.beginPath();
 
+
                     ctx.moveTo(
                         oX + (f.x * dW),
                         oY + (f.y * dH)
                     );
 
+
                     ctx.lineTo(
                         oX + (t.x * dW),
                         oY + (t.y * dH)
                     );
+
 
                     ctx.strokeStyle = col;
                     ctx.lineWidth = 4;
@@ -1068,16 +1074,40 @@
                 }
 
 
+                /* ================================================
+                   PUNTOS
+                ================================================= */
+
                 if (drawDots) {
 
-                    for (const pt of pts) {
+                    for (
+                        let i = 0;
+                        i < pts.length;
+                        i++
+                    ) {
+
+                        const pt =
+                            pts[i];
+
 
                         if (!pt) {
                             continue;
                         }
 
 
+                        /*
+                         * No dibujar los landmarks ocultos.
+                         */
+
+                        if (
+                            hiddenPoints.includes(i)
+                        ) {
+                            continue;
+                        }
+
+
                         ctx.beginPath();
+
 
                         ctx.arc(
                             oX + (pt.x * dW),
@@ -1087,7 +1117,10 @@
                             2 * Math.PI
                         );
 
-                        ctx.fillStyle = "white";
+
+                        ctx.fillStyle =
+                            "white";
+
 
                         ctx.fill();
 
@@ -1099,15 +1132,38 @@
 
 
             /* =====================================================
-               DIBUJAR POSE
+               DIBUJAR POSE CORPORAL
+               
+               OCULTAMOS:
+               17 = meñique izquierdo
+               18 = meñique derecho
+               19 = índice izquierdo
+               20 = índice derecho
+               21 = pulgar izquierdo
+               22 = pulgar derecho
             ===================================================== */
 
             d(
                 p,
                 POSE_CONNECTIONS,
-                '#00FFFF'
+                '#00FFFF',
+                false,
+                [
+                    17,
+                    18,
+                    19,
+                    20,
+                    21,
+                    22
+                ]
             );
 
+
+            /* =====================================================
+               MANOS
+               
+               Se mantienen exactamente igual.
+            ===================================================== */
 
             if (res.leftHandLandmarks) {
 
@@ -1176,10 +1232,6 @@
 
         /* =========================================================
            CÁMARA
-           
-           SOLO AQUÍ SE GESTIONA LA CÁMARA.
-           
-           No utilizamos getUserMedia() manualmente.
         ========================================================= */
 
         const camera =
@@ -1232,4 +1284,5 @@
     </script>
 
 </body>
+
 </html>
