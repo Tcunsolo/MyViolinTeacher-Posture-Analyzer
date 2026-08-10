@@ -1,4 +1,4 @@
- <!DOCTYPE html> <html lang="es"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Violin Teacher - Bio-Web Full Tracking v26</title>
+<!DOCTYPE html> <html lang="es"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Violin Teacher - Bio-Web Full Tracking v26</title>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -146,20 +146,31 @@ function onResults(res) {
         speak(m);
     }
 
-    // --- DIBUJO ---
-    function d(pts, conn, col) {
+        // --- DIBUJO (Sustituye tu función d y las 3 llamadas siguientes por esto) ---
+    function d(pts, conn, col, drawPoints = false) {
         if(!pts) return;
+        // Dibujar las líneas (huesos)
         for (const c of conn) {
             const f = pts[c[0]], t = pts[c[1]];
-            ctx.beginPath(); ctx.moveTo(oX + (f.x * dW), oY + (f.y * dH));
+            ctx.beginPath(); 
+            ctx.moveTo(oX + (f.x * dW), oY + (f.y * dH));
             ctx.lineTo(oX + (t.x * dW), oY + (t.y * dH));
             ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
         }
+        // Dibujar los puntos (articulaciones) solo si se activa el flag
+        if(drawPoints) {
+            for (const pt of pts) {
+                ctx.beginPath();
+                ctx.arc(oX + (pt.x * dW), oY + (pt.y * dH), 2, 0, 2 * Math.PI);
+                ctx.fillStyle = "white";
+                ctx.fill();
+            }
+        }
     }
-    d(p, POSE_CONNECTIONS, '#00FFFF');
-    if(res.leftHandLandmarks) d(res.leftHandLandmarks, HAND_CONNECTIONS, '#FF00FF');
-    if(res.rightHandLandmarks) d(res.rightHandLandmarks, HAND_CONNECTIONS, '#00FFFF');
-    ctx.restore();
+
+    d(p, POSE_CONNECTIONS, '#00FFFF'); // Cuerpo: Cian
+    if(res.leftHandLandmarks) d(res.leftHandLandmarks, HAND_CONNECTIONS, '#FF00FF', true); // Mano Violín: Magenta + Puntos
+    if(res.rightHandLandmarks) d(res.rightHandLandmarks, HAND_CONNECTIONS, '#FFCC00', true); // Mano Arco: Amarillo + Puntos
 }
 
 const holistic = new Holistic({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${f}`});
